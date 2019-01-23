@@ -5,6 +5,7 @@ import static java.lang.String.format;
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.enums.MessageProcessMap;
+import com.liph.chatterade.connection.exceptions.ConnectionClosedException;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.messaging.models.NickMessage;
 import com.liph.chatterade.messaging.models.PassMessage;
@@ -68,18 +69,25 @@ public class ClientConnection extends Connection {
     }
 
 
+    public void sendMessage(String sender, String messageType, String message) {
+        writer.write(format(":%s %s %s %s\r\n", sender, messageType, user.getNick(), message));
+    }
+
+
     private Message readMessage() throws IOException {
         while(true) {
             try {
-                return ircParser.parse(reader.readLine(), true);
+                String line;
+                do {
+                    line = reader.readLine();
+                    if(line == null)
+                        throw new ConnectionClosedException();
+                } while(line.trim().equals(""));
+
+                return ircParser.parse(line, true);
             } catch (MalformedIrcMessageException e) {
                 sendMessage(application.getServerName(), e.getErrorCode(), e.getMessage());
             }
         }
-    }
-
-
-    private void sendMessage(String sender, String messageType, String message) {
-        writer.write(format(":%s %s %s %s", sender, messageType, user.getNick(), message));
     }
 }

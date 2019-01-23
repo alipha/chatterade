@@ -20,6 +20,7 @@ import com.liph.chatterade.messaging.models.PrivateMessage;
 import com.liph.chatterade.messaging.models.QuitMessage;
 import com.liph.chatterade.messaging.models.UserMessage;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -29,7 +30,9 @@ import java.util.stream.Stream;
 
 public class Application {
 
+    private final Instant startupTime;
     private final String serverName;
+    private final String serverVersion;
     private final ConnectionListener clientListener;
     private final ConnectionListener serverListener;
 
@@ -37,8 +40,10 @@ public class Application {
     private final Set<Channel> channels;
 
 
-    public Application(String serverName, int clientPort, int serverPort) {
+    public Application(String serverName, String serverVersion, int clientPort, int serverPort) {
+        this.startupTime = Instant.now();
         this.serverName = serverName;
+        this.serverVersion = serverVersion;
         this.clientListener = new ConnectionListener(this, clientPort, ClientConnection::new);
         this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new);
         this.clientUsers = ConcurrentHashMap.newKeySet();
@@ -61,6 +66,14 @@ public class Application {
     public ClientUser addUser(String nick, String username, String realName, Optional<String> serverPass, ClientConnection connection) {
         ClientUser user = new ClientUser(nick, username, realName, connection);
         clientUsers.add(user);
+
+        connection.sendMessage(serverName, "001", format(":Welcome to the Internet Relay Network %s", user.getFullyQualifiedName()));
+        connection.sendMessage(serverName, "002", format(":Your host is %s, running version %s", serverName, serverVersion));
+        connection.sendMessage(serverName, "003", format(":This server was created %s", startupTime));
+        connection.sendMessage(serverName, "004", format("%s %s DOQRSZaghilopswz CFILMPQSbcefgijklmnopqrstvz bkloveqjfI", serverName, serverVersion));
+        connection.sendMessage(serverName, "375", format(":- %s Message of the Day -", serverName));
+        connection.sendMessage(serverName, "372", "Welcome to my test chatterade server!");
+        connection.sendMessage(serverName, "376", ":End of /MOTD command.");
         return user;
     }
 
@@ -103,7 +116,14 @@ public class Application {
     }
 
     public void processPrivateMessage(PrivateMessage message) {
+        String targetName = message.getTarget();
+        Optional<ClientUser> target = clientUsers.stream().filter(u -> u.getNick().equalsIgnoreCase(targetName)).findFirst();
 
+        if(target.isPresent()) {
+            target.get().getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+        } else {
+            message.getSender().getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTarget()));
+        }
     }
 
     public void processQuit(QuitMessage message) {

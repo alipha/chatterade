@@ -64,7 +64,7 @@ public class IrcParser {
 
         // find sender (if any) and remove it from token list
         if(!tokens.isEmpty() && tokens.get(0).startsWith(":")) {
-            sender = Optional.of(tokens.get(0));
+            sender = Optional.of(tokens.get(0).substring(1));
             tokens.remove(0);
         }
 

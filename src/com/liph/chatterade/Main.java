@@ -14,7 +14,7 @@ public class Main {
         if(args.length >= 2)
             serverPort = Integer.parseInt(args[1]);
 
-        Application application = new Application("alipha.ddns.net", clientPort, serverPort);
+        Application application = new Application("alipha.ddns.net", "0.1", clientPort, serverPort);
         application.run();
     }
 }
