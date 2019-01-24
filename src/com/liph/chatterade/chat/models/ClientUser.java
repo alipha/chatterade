@@ -17,7 +17,7 @@ public class ClientUser extends User {
 
 
     public String getFullyQualifiedName() {
-        return format("%s!%s@localhost", getNick(), getUsername());
+        return format("%s!%s@localhost", getNick(), getUsername().orElse(getNick()));
     }
 
     public ClientConnection getConnection() {

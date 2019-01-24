@@ -22,12 +22,13 @@ public class ClientConnection extends Connection {
 
     private final IrcParser ircParser;
 
-    private ClientUser user;
+    private Optional<ClientUser> user;
 
 
     public ClientConnection(Application application, Socket socket) {
         super(application, socket);
         this.ircParser = new IrcParser();
+        this.user = Optional.empty();
     }
 
     @Override
@@ -54,23 +55,25 @@ public class ClientConnection extends Connection {
         UserMessage userMessage = (UserMessage)message;
 
         // user is logged in, now perform message loop
-        ClientUser user = application.addUser(nick, userMessage.getUsername(), userMessage.getRealName(), serverPass, this);
+        user = Optional.of(application.addUser(nick, userMessage.getUsername(), userMessage.getRealName(), serverPass, this));
 
         while(true) {
             message = readMessage();
-            message.setSender(user);
+            message.setSender(user.get());
             MessageProcessMap.process(application, message);
         }
     }
 
     @Override
     public void doClose() throws Exception {
-        application.removeUser(user);
+        user.ifPresent(application::removeUser);
     }
 
 
     public void sendMessage(String sender, String messageType, String message) {
-        writer.write(format(":%s %s %s %s\r\n", sender, messageType, user.getNick(), message));
+        String nick = user.map(ClientUser::getNick).orElse("*");
+        writer.write(format(":%s %s %s %s\r\n", sender, messageType, nick, message));
+        writer.flush();
     }
 
 

@@ -10,6 +10,7 @@ import com.liph.chatterade.common.EnumHelper;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
+import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.models.JoinMessage;
 import com.liph.chatterade.messaging.models.NickMessage;
@@ -33,6 +34,7 @@ public class Application {
     private final Instant startupTime;
     private final String serverName;
     private final String serverVersion;
+    private final EncryptionService encryptionService;
     private final ConnectionListener clientListener;
     private final ConnectionListener serverListener;
 
@@ -44,6 +46,7 @@ public class Application {
         this.startupTime = Instant.now();
         this.serverName = serverName;
         this.serverVersion = serverVersion;
+        this.encryptionService = new EncryptionService();
         this.clientListener = new ConnectionListener(this, clientPort, ClientConnection::new);
         this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new);
         this.clientUsers = ConcurrentHashMap.newKeySet();

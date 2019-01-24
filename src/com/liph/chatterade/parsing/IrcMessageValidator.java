@@ -23,7 +23,7 @@ public class IrcMessageValidator {
         IrcMessageValidationMap validationType = IrcMessageValidationMap.fromName(messageType.name())
             .orElseThrow(() -> new IllegalStateException(format("%s is missing an IrcMessageValidationMap.", messageType.name())));
 
-        if(validationType.isTargetTypeAllowed(message.getTargetType())) {
+        if(!validationType.isTargetTypeAllowed(message.getTargetType())) {
             if(message.getTargetType() == TargetType.NONE)
                 throw new MalformedIrcMessageException(messageType.getIrcCommand(), "411", format(":No recipient given (%s)", messageType.getIrcCommand()));
 
