@@ -3,6 +3,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.liph.chatterade.messaging.enums.MessageType;
+import com.liph.chatterade.messaging.enums.TargetType;
 import com.liph.chatterade.parsing.IrcParser;
 import com.liph.chatterade.parsing.models.TokenizedMessage;
 import java.util.Optional;
@@ -106,5 +107,70 @@ public class IrcParserTest {
         IrcParser parser = new IrcParser();
 
         TokenizedMessage m1 = parser.tokenizeMessage("JOIN #foo,#bar,#baz", false);
+        TokenizedMessage m2 = parser.tokenizeMessage("JOIN &foo,&bar,#baz key1,key2", false);
+        TokenizedMessage m3 = parser.tokenizeMessage(":Alice!alice@localhost JOIN #foo,Bob,#baz", false);
+        TokenizedMessage m4 = parser.tokenizeMessage("JOIN #foo", false);
+        TokenizedMessage m5 = parser.tokenizeMessage("PRIVMSG Bob :hello there", false);
+        TokenizedMessage m6 = parser.tokenizeMessage("PRIVMSG :hello there", false);
+        TokenizedMessage m7 = parser.tokenizeMessage("JOIN", false);
+        TokenizedMessage m8 = parser.tokenizeMessage("PASS mypass", false);
+
+        // m1 test
+        assertTrue(m1.getArguments().isEmpty());
+        assertFalse(m1.hasTrailingArgument());
+        assertEquals(TargetType.MULTIPLE_CHANNELS, m1.getTargetType());
+
+        assertEquals(Optional.of("#foo,#bar,#baz"), m1.getTargetName());
+
+        assertEquals(3, m1.getTargetNames().size());
+        assertEquals("#foo", m1.getTargetNames().get(0));
+        assertEquals("#bar", m1.getTargetNames().get(1));
+        assertEquals("#baz", m1.getTargetNames().get(2));
+
+        // m2 test
+        assertEquals(1, m2.getArguments().size());
+        assertEquals("key1,key2", m2.getArguments().get(0));
+        assertFalse(m2.hasTrailingArgument());
+        assertEquals(TargetType.MULTIPLE_CHANNELS, m2.getTargetType());
+
+        assertEquals(Optional.of("&foo,&bar,#baz"), m2.getTargetName());
+
+        assertEquals(3, m2.getTargetNames().size());
+        assertEquals("&foo", m2.getTargetNames().get(0));
+        assertEquals("&bar", m2.getTargetNames().get(1));
+        assertEquals("#baz", m2.getTargetNames().get(2));
+        
+        // m3 test
+        assertTrue(m3.getArguments().isEmpty());
+        assertFalse(m3.hasTrailingArgument());
+        assertEquals(TargetType.INVALID, m3.getTargetType());
+
+        assertEquals(Optional.of("#foo,Bob,#baz"), m3.getTargetName());
+
+        assertEquals(3, m3.getTargetNames().size());
+        assertEquals("#foo", m3.getTargetNames().get(0));
+        assertEquals("Bob", m3.getTargetNames().get(1));
+        assertEquals("#baz", m3.getTargetNames().get(2));
+
+        // m4 test
+        assertTrue(m4.getArguments().isEmpty());
+        assertFalse(m4.hasTrailingArgument());
+        assertEquals(TargetType.CHANNEL, m4.getTargetType());
+
+        assertEquals(Optional.of("#foo"), m4.getTargetName());
+
+        assertEquals(1, m4.getTargetNames().size());
+        assertEquals("#foo", m4.getTargetNames().get(0));
+
+        // m5 test
+        assertEquals(1, m5.getArguments().size());
+        assertEquals("hello there", m5.getArguments().get(0));
+        assertTrue(m5.hasTrailingArgument());
+        assertEquals(TargetType.USER, m5.getTargetType());
+
+        assertEquals(Optional.of("Bob"), m5.getTargetName());
+
+        assertEquals(1, m5.getTargetNames().size());
+        assertEquals("Bob", m5.getTargetNames().get(0));
     }
 }

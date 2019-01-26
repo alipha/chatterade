@@ -11,6 +11,7 @@ import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.encryption.EncryptionService;
+import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.models.JoinMessage;
 import com.liph.chatterade.messaging.models.NickMessage;
@@ -23,6 +24,7 @@ import com.liph.chatterade.messaging.models.UserMessage;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,6 +42,7 @@ public class Application {
 
     private final Set<ClientUser> clientUsers;
     private final Set<Channel> channels;
+    private final Map<String, ClientUser> clientUsersByPublicKey;
 
 
     public Application(String serverName, String serverVersion, int clientPort, int serverPort) {
@@ -51,6 +54,7 @@ public class Application {
         this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new);
         this.clientUsers = ConcurrentHashMap.newKeySet();
         this.channels = ConcurrentHashMap.newKeySet();
+        this.clientUsersByPublicKey = new ConcurrentHashMap<>();
     }
 
     public void run() {
@@ -68,7 +72,13 @@ public class Application {
 
     public ClientUser addUser(String nick, String username, String realName, Optional<String> serverPass, ClientConnection connection) {
         ClientUser user = new ClientUser(nick, username, realName, connection);
+        Key key = encryptionService.generateKey();
+        user.getKeys().add(key);
+
+        String keyBase64 = key.getBase64SigningPublicKey();
+
         clientUsers.add(user);
+        clientUsersByPublicKey.put(keyBase64, user);
 
         connection.sendMessage(serverName, "001", format(":Welcome to the Internet Relay Network %s", user.getFullyQualifiedName()));
         connection.sendMessage(serverName, "002", format(":Your host is %s, running version %s", serverName, serverVersion));
@@ -77,6 +87,7 @@ public class Application {
         connection.sendMessage(serverName, "375", format(":- %s Message of the Day -", serverName));
         connection.sendMessage(serverName, "372", "Welcome to my test chatterade server!");
         connection.sendMessage(serverName, "376", ":End of /MOTD command.");
+        connection.sendMessage(serverName, "NOTICE", format(":Your public key is %s. Users need to /msg %s@%s to message you.", keyBase64, user.getNick(), keyBase64));
         return user;
     }
 
@@ -120,10 +131,12 @@ public class Application {
 
     public void processPrivateMessage(PrivateMessage message) {
         String targetName = message.getTarget();
-        Optional<ClientUser> target = clientUsers.stream().filter(u -> u.getNick().equalsIgnoreCase(targetName)).findFirst();
+        String publicKey = targetName.contains("@") ? targetName.split("@")[1] : targetName;
 
-        if(target.isPresent()) {
-            target.get().getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+        ClientUser target = clientUsersByPublicKey.get(publicKey);
+
+        if(target != null) {
+            target.getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
         } else {
             message.getSender().getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTarget()));
         }

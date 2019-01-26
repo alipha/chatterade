@@ -1,6 +1,8 @@
 package com.liph.chatterade.encryption;
 
+import com.liph.chatterade.encryption.models.Key;
 import com.muquit.libsodiumjna.SodiumLibrary;
+import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import com.sun.jna.Platform;
 
 
@@ -13,6 +15,15 @@ public class EncryptionService {
         if(!isInitialized) {
             isInitialized = true;
             initialize();
+        }
+    }
+
+
+    public Key generateKey() {
+        try {
+            return new Key(SodiumLibrary.cryptoSignKeyPair());
+        } catch(SodiumLibraryException e) {
+            throw new RuntimeException(e);
         }
     }
 

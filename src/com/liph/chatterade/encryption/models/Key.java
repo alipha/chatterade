@@ -1,6 +1,8 @@
-package com.liph.chatterade.chat.models;
+package com.liph.chatterade.encryption.models;
 
 import com.muquit.libsodiumjna.SodiumKeyPair;
+import com.muquit.libsodiumjna.SodiumLibrary;
+import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import java.util.Base64;
 import java.util.Optional;
 
@@ -40,19 +42,45 @@ public class Key {
     }
 
 
-    public byte[] getPublicKey() {
+    public byte[] getSigningPublicKey() {
         return publicKey;
     }
 
-    public Optional<byte[]> getPrivateKey() {
+    public Optional<byte[]> getSigningPrivateKey() {
         return privateKey;
     }
 
-    public String getBase64PublicKey() {
+    public String getBase64SigningPublicKey() {
         return base64encoder.encodeToString(publicKey);
     }
 
-    public Optional<String> getBase64PrivateKey() {
+    public Optional<String> getBase64SigningPrivateKey() {
         return privateKey.map(k -> base64encoder.encodeToString(k));
+    }
+
+    public byte[] getDHPublicKey() {
+        try {
+            return SodiumLibrary.cryptoSignEdPkTOcurvePk(publicKey);
+        } catch(SodiumLibraryException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Optional<byte[]> getDHPrivateKey() {
+        return privateKey.map(sk -> {
+            try {
+                return SodiumLibrary.cryptoSignEdSkTOcurveSk(sk);
+            } catch (SodiumLibraryException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public String getBase64DHPublicKey() {
+        return base64encoder.encodeToString(getDHPublicKey());
+    }
+
+    public Optional<String> getBase64DHPrivateKey() {
+        return getDHPrivateKey().map(k -> base64encoder.encodeToString(k));
     }
 }

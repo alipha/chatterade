@@ -2,6 +2,7 @@ package com.liph.chatterade.chat.models;
 
 
 import com.liph.chatterade.chat.enums.ChatEntityType;
+import com.liph.chatterade.encryption.models.Key;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,6 +12,7 @@ public class User extends ChatEntity {
     private Optional<String> username;
     private Optional<String> realName;
     private final Set<Channel> channels;
+    private final Set<Key> keys;
 
 
     public User(String nick) {
@@ -18,6 +20,7 @@ public class User extends ChatEntity {
         username = Optional.empty();
         realName = Optional.empty();
         channels = ConcurrentHashMap.newKeySet();
+        keys = ConcurrentHashMap.newKeySet();
     }
 
     public User(String nick, String username, String realName) {
@@ -25,6 +28,7 @@ public class User extends ChatEntity {
         this.username = Optional.of(username);
         this.realName = Optional.of(realName);
         this.channels = ConcurrentHashMap.newKeySet();
+        keys = ConcurrentHashMap.newKeySet();
     }
 
 
@@ -55,6 +59,10 @@ public class User extends ChatEntity {
 
     public Set<Channel> getChannels() {
         return channels;
+    }
+
+    public Set<Key> getKeys() {
+        return keys;
     }
 
     @Override
