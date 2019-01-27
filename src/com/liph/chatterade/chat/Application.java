@@ -9,20 +9,15 @@ import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.Contact;
 import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.common.EnumHelper;
+import com.liph.chatterade.common.Pair;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.messaging.enums.MessageType;
-import com.liph.chatterade.messaging.models.JoinMessage;
-import com.liph.chatterade.messaging.models.NickMessage;
-import com.liph.chatterade.messaging.models.NoticeMessage;
-import com.liph.chatterade.messaging.models.PartMessage;
-import com.liph.chatterade.messaging.models.PassMessage;
-import com.liph.chatterade.messaging.models.PrivateMessage;
-import com.liph.chatterade.messaging.models.QuitMessage;
-import com.liph.chatterade.messaging.models.UserMessage;
+import com.liph.chatterade.messaging.enums.TargetType;
+import com.liph.chatterade.messaging.models.*;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
 import com.liph.chatterade.parsing.models.Target;
 import java.time.Instant;
@@ -69,8 +64,7 @@ public class Application {
     }
 
 
-    public ClientUser addUser(String nick, String username, String realName, Optional<String> serverPass, ClientConnection connection) {
-        ClientUser user = new ClientUser(nick, username, realName, connection);
+    public ClientUser addUser(ClientUser user) {
         Key key = encryptionService.generateKey();
         user.setKey(Optional.of(key));
 
@@ -78,7 +72,7 @@ public class Application {
 
         clientUsersByPublicKey.put(keyBase64, user);
 
-        sendWelcomeMessage(connection, keyBase64, user);
+        sendWelcomeMessage(user.getConnection(), keyBase64, user);
         return user;
     }
 
@@ -107,7 +101,7 @@ public class Application {
     }
 
     public void processNick(NickMessage message) {
-        message.getSender().setNick(message.getNewNick());
+        message.getSender().setNick(Optional.of(message.getNewNick()));
     }
 
     public void processNotice(NoticeMessage message) {
@@ -123,12 +117,27 @@ public class Application {
     }
 
     public void processPrivateMessage(PrivateMessage message) {
+        /*
+        Pair<Optional<ClientUser>, Optional<String>> targetAndPreviousNick = resolveTargetClientUser(message.getTarget(), message.getSender());
+        Optional<ClientUser> target = targetAndPreviousNick.getFirst();
+        Optional<String> previousNick = targetAndPreviousNick.getSecond();
+        */
         Optional<ClientUser> target = resolveTargetClientUser(message.getTarget(), message.getSender());
 
         if(target.isPresent()) {
+            //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
+            String targetNick = target.get().getNick().get();
+
+            if(!targetNick.equals(message.getTargetText())) {
+                sendNickChange(message.getSender(), message.getTargetText(), targetNick);
+            }
+
+            Optional<String> previousNick = target.get().addOrUpdateContact(message.getSender());
+            previousNick.ifPresent(previous -> sendNickChange(target.get(), previous, message.getSender().getNick().get()));
+
             target.get().getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
         } else {
-            message.getSender().getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTarget()));
+            message.getSender().getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTargetText()));
         }
     }
 
@@ -140,19 +149,37 @@ public class Application {
 
     }
 
+    public void processPing(PingMessage message) {
+        message.getSender().getConnection().sendMessage(serverName, MessageType.PONG.getIrcCommand(), message.getText());
+    }
+
+    public void processPong(PongMessage message) {
+
+    }
+
+
+    private void sendNickChange(ClientUser user, String previousNick, String newNick) {
+        user.getConnection().sendMessage(format(":%s NICK %s", previousNick, newNick));
+    }
 
     private Optional<ClientUser> resolveTargetClientUser(Target target, ClientUser sender) {
+        if(target.getTargetType() != TargetType.USER)   // TODO: error?
+            return Optional.empty(); //Pair.of(Optional.empty(), Optional.empty());
 
-        Optional<ClientUser> targetClientUser = Optional.ofNullable(clientUsersByPublicKey.get(publicKey));
+        Optional<ClientUser> targetClientUser = target.getPublicKey().flatMap(this::getClientUserByPublicKey);
+        System.out.println(format("%s isPresent=%b", target.getPublicKey().orElse("none"), targetClientUser.isPresent()));
 
-        if(!targetClientUser.isPresent()) {
-            Optional<Contact> targetContact = sender.getContactByNick(targetName);
+        if(!targetClientUser.isPresent() && target.getNick().isPresent()) {
+            Optional<Contact> targetContact = sender.getContactByNick(target.getNick().get());
             if(targetContact.isPresent()) {
                 targetClientUser = getClientUserByContact(targetContact.get());
             }
         }
 
+        targetClientUser.ifPresent(sender::addOrUpdateContact);
         return targetClientUser;
+        //Optional<String> previousNick = targetClientUser.flatMap(c -> sender.addOrUpdateContact(c.getNick(), c.getKey()));
+        //return Pair.of(targetClientUser, previousNick);
     }
 
     private Optional<ClientUser> getClientUserByPublicKey(String publicKey) {
@@ -176,7 +203,7 @@ public class Application {
         connection.sendMessage(serverName, "375", format(":- %s Message of the Day -", serverName));
         connection.sendMessage(serverName, "372", "Welcome to my test chatterade server!");
         connection.sendMessage(serverName, "376", ":End of /MOTD command.");
-        connection.sendMessage(serverName, "NOTICE", format(":Your public key is %s. Users need to /msg %s@%s to message you.", keyBase64, user.getNick(), keyBase64));
+        connection.sendMessage(serverName, "NOTICE", format(":Your public key is %s. Users need to /msg %s@%s to message you.", keyBase64, user.getNick().get(), keyBase64));
     }
 
     private void verifyCodeConsistency() {

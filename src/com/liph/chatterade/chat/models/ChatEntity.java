@@ -3,24 +3,30 @@ package com.liph.chatterade.chat.models;
 
 import com.liph.chatterade.chat.enums.ChatEntityType;
 
+import java.util.Optional;
+
 public abstract class ChatEntity {
 
-    private String name;
+    private Optional<String> name = Optional.empty();
 
+
+    protected ChatEntity() {
+
+    }
 
     protected ChatEntity(String name) {
-        this.name = name;
+        this.name = Optional.of(name);
     }
 
 
     public abstract ChatEntityType getType();
 
 
-    public String getName() {
+    public Optional<String> getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public void setName(Optional<String> name) {
         this.name = name;
     }
 }

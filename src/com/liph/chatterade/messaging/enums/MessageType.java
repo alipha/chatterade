@@ -1,14 +1,6 @@
 package com.liph.chatterade.messaging.enums;
 
-import com.liph.chatterade.messaging.models.JoinMessage;
-import com.liph.chatterade.messaging.models.Message;
-import com.liph.chatterade.messaging.models.NickMessage;
-import com.liph.chatterade.messaging.models.NoticeMessage;
-import com.liph.chatterade.messaging.models.PartMessage;
-import com.liph.chatterade.messaging.models.PassMessage;
-import com.liph.chatterade.messaging.models.PrivateMessage;
-import com.liph.chatterade.messaging.models.QuitMessage;
-import com.liph.chatterade.messaging.models.UserMessage;
+import com.liph.chatterade.messaging.models.*;
 import com.liph.chatterade.parsing.models.TokenizedMessage;
 import java.util.Optional;
 import java.util.function.Function;
@@ -22,7 +14,9 @@ public enum MessageType {
     PASS   ("PASS"   , PassMessage::new   ),
     PRIVMSG("PRIVMSG", PrivateMessage::new),
     QUIT   ("QUIT"   , QuitMessage::new   ),
-    USER   ("USER"   , UserMessage::new   );
+    USER   ("USER"   , UserMessage::new   ),
+    PING   ("PING"   , PingMessage::new   ),
+    PONG   ("PONG"   , PongMessage::new   );
 
 
     private final String ircCommand;

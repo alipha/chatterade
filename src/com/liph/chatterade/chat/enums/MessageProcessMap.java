@@ -17,7 +17,9 @@ public enum MessageProcessMap {
     PASS   (wrap(Application::processPass)),
     PRIVMSG(wrap(Application::processPrivateMessage)),
     QUIT   (wrap(Application::processQuit)),
-    USER   (wrap(Application::processUser));
+    USER   (wrap(Application::processUser)),
+    PING   (wrap(Application::processPing)),
+    PONG   (wrap(Application::processPong));
     
     
     private BiConsumer<Application, Message> consumer;

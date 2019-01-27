@@ -9,15 +9,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class User extends ChatEntity {
 
-    private Optional<String> username;
-    private Optional<String> realName;
-    private Optional<Key> key;
+    private Optional<String> username = Optional.empty();
+    private Optional<String> realName = Optional.empty();
+    private Optional<Key> key = Optional.empty();
 
+
+    public User() {}
 
     public User(String nick) {
         super(nick);
-        username = Optional.empty();
-        realName = Optional.empty();
     }
 
     public User(String nick, String username, String realName) {
@@ -27,11 +27,11 @@ public class User extends ChatEntity {
     }
 
 
-    public String getNick() {
+    public Optional<String> getNick() {
         return getName();
     }
 
-    public void setNick(String nick) {
+    public void setNick(Optional<String> nick) {
         setName(nick);
     }
 
