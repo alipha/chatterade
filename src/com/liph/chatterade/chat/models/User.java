@@ -11,24 +11,19 @@ public class User extends ChatEntity {
 
     private Optional<String> username;
     private Optional<String> realName;
-    private final Set<Channel> channels;
-    private final Set<Key> keys;
+    private Optional<Key> key;
 
 
     public User(String nick) {
         super(nick);
         username = Optional.empty();
         realName = Optional.empty();
-        channels = ConcurrentHashMap.newKeySet();
-        keys = ConcurrentHashMap.newKeySet();
     }
 
     public User(String nick, String username, String realName) {
         super(nick);
         this.username = Optional.of(username);
         this.realName = Optional.of(realName);
-        this.channels = ConcurrentHashMap.newKeySet();
-        keys = ConcurrentHashMap.newKeySet();
     }
 
 
@@ -57,12 +52,12 @@ public class User extends ChatEntity {
         this.realName = realName;
     }
 
-    public Set<Channel> getChannels() {
-        return channels;
+    public Optional<Key> getKey() {
+        return key;
     }
 
-    public Set<Key> getKeys() {
-        return keys;
+    public void setKey(Optional<Key> key) {
+        this.key = key;
     }
 
     @Override

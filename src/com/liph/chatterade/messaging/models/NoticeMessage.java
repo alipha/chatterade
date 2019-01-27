@@ -1,6 +1,7 @@
 package com.liph.chatterade.messaging.models;
 
 import com.liph.chatterade.messaging.enums.MessageType;
+import com.liph.chatterade.parsing.models.Target;
 import com.liph.chatterade.parsing.models.TokenizedMessage;
 
 
@@ -10,8 +11,8 @@ public class NoticeMessage extends Message {
         super(tokenizedMessage);
     }
 
-    public String getTarget() {
-        return getTokenizedMessage().getTargetName().get();
+    public Target getTarget() {
+        return getTokenizedMessage().getTargets().get(0);
     }
 
     public String getText() {

@@ -6,6 +6,8 @@ import static java.util.stream.Collectors.toList;
 import com.liph.chatterade.chat.enums.MessageProcessMap;
 import com.liph.chatterade.chat.models.Channel;
 import com.liph.chatterade.chat.models.ClientUser;
+import com.liph.chatterade.chat.models.Contact;
+import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.common.EnumHelper;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ConnectionListener;
@@ -22,6 +24,7 @@ import com.liph.chatterade.messaging.models.PrivateMessage;
 import com.liph.chatterade.messaging.models.QuitMessage;
 import com.liph.chatterade.messaging.models.UserMessage;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
+import com.liph.chatterade.parsing.models.Target;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -40,8 +43,6 @@ public class Application {
     private final ConnectionListener clientListener;
     private final ConnectionListener serverListener;
 
-    private final Set<ClientUser> clientUsers;
-    private final Set<Channel> channels;
     private final Map<String, ClientUser> clientUsersByPublicKey;
 
 
@@ -52,8 +53,6 @@ public class Application {
         this.encryptionService = new EncryptionService();
         this.clientListener = new ConnectionListener(this, clientPort, ClientConnection::new);
         this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new);
-        this.clientUsers = ConcurrentHashMap.newKeySet();
-        this.channels = ConcurrentHashMap.newKeySet();
         this.clientUsersByPublicKey = new ConcurrentHashMap<>();
     }
 
@@ -73,31 +72,25 @@ public class Application {
     public ClientUser addUser(String nick, String username, String realName, Optional<String> serverPass, ClientConnection connection) {
         ClientUser user = new ClientUser(nick, username, realName, connection);
         Key key = encryptionService.generateKey();
-        user.getKeys().add(key);
+        user.setKey(Optional.of(key));
 
         String keyBase64 = key.getBase64SigningPublicKey();
 
-        clientUsers.add(user);
         clientUsersByPublicKey.put(keyBase64, user);
 
-        connection.sendMessage(serverName, "001", format(":Welcome to the Internet Relay Network %s", user.getFullyQualifiedName()));
-        connection.sendMessage(serverName, "002", format(":Your host is %s, running version %s", serverName, serverVersion));
-        connection.sendMessage(serverName, "003", format(":This server was created %s", startupTime));
-        connection.sendMessage(serverName, "004", format("%s %s DOQRSZaghilopswz CFILMPQSbcefgijklmnopqrstvz bkloveqjfI", serverName, serverVersion));
-        connection.sendMessage(serverName, "375", format(":- %s Message of the Day -", serverName));
-        connection.sendMessage(serverName, "372", "Welcome to my test chatterade server!");
-        connection.sendMessage(serverName, "376", ":End of /MOTD command.");
-        connection.sendMessage(serverName, "NOTICE", format(":Your public key is %s. Users need to /msg %s@%s to message you.", keyBase64, user.getNick(), keyBase64));
+        sendWelcomeMessage(connection, keyBase64, user);
         return user;
     }
 
     public void removeUser(ClientUser clientUser) {
+        /*
         Set<Channel> channels = clientUser.getChannels();
         for(Channel channel : channels) {
             channel.getUsers().remove(clientUser);
         }
+        */
 
-        clientUsers.remove(clientUser);
+        clientUser.getKey().ifPresent(k -> clientUsersByPublicKey.remove(k.getBase64SigningPublicKey()));
     }
     
     
@@ -130,13 +123,10 @@ public class Application {
     }
 
     public void processPrivateMessage(PrivateMessage message) {
-        String targetName = message.getTarget();
-        String publicKey = targetName.contains("@") ? targetName.split("@")[1] : targetName;
+        Optional<ClientUser> target = resolveTargetClientUser(message.getTarget(), message.getSender());
 
-        ClientUser target = clientUsersByPublicKey.get(publicKey);
-
-        if(target != null) {
-            target.getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+        if(target.isPresent()) {
+            target.get().getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
         } else {
             message.getSender().getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTarget()));
         }
@@ -150,6 +140,44 @@ public class Application {
 
     }
 
+
+    private Optional<ClientUser> resolveTargetClientUser(Target target, ClientUser sender) {
+
+        Optional<ClientUser> targetClientUser = Optional.ofNullable(clientUsersByPublicKey.get(publicKey));
+
+        if(!targetClientUser.isPresent()) {
+            Optional<Contact> targetContact = sender.getContactByNick(targetName);
+            if(targetContact.isPresent()) {
+                targetClientUser = getClientUserByContact(targetContact.get());
+            }
+        }
+
+        return targetClientUser;
+    }
+
+    private Optional<ClientUser> getClientUserByPublicKey(String publicKey) {
+        return Optional.ofNullable(clientUsersByPublicKey.get(publicKey));
+    }
+
+    private Optional<ClientUser> getClientUserByPublicKey(Key key) {
+        return getClientUserByPublicKey(key.getBase64SigningPublicKey());
+    }
+
+    private Optional<ClientUser> getClientUserByContact(User user) {
+        return user.getKey().flatMap(this::getClientUserByPublicKey);
+    }
+
+
+    private void sendWelcomeMessage(ClientConnection connection, String keyBase64, ClientUser user) {
+        connection.sendMessage(serverName, "001", format(":Welcome to the Internet Relay Network %s", user.getFullyQualifiedName()));
+        connection.sendMessage(serverName, "002", format(":Your host is %s, running version %s", serverName, serverVersion));
+        connection.sendMessage(serverName, "003", format(":This server was created %s", startupTime));
+        connection.sendMessage(serverName, "004", format("%s %s DOQRSZaghilopswz CFILMPQSbcefgijklmnopqrstvz bkloveqjfI", serverName, serverVersion));
+        connection.sendMessage(serverName, "375", format(":- %s Message of the Day -", serverName));
+        connection.sendMessage(serverName, "372", "Welcome to my test chatterade server!");
+        connection.sendMessage(serverName, "376", ":End of /MOTD command.");
+        connection.sendMessage(serverName, "NOTICE", format(":Your public key is %s. Users need to /msg %s@%s to message you.", keyBase64, user.getNick(), keyBase64));
+    }
 
     private void verifyCodeConsistency() {
         verifyEnumConsistency(MessageProcessMap.class, MessageProcessMap.values());

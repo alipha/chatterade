@@ -1,6 +1,7 @@
 package com.liph.chatterade.messaging.models;
 
 import com.liph.chatterade.messaging.enums.MessageType;
+import com.liph.chatterade.parsing.models.Target;
 import com.liph.chatterade.parsing.models.TokenizedMessage;
 import java.util.List;
 
@@ -11,8 +12,8 @@ public class PartMessage extends Message {
         super(tokenizedMessage);
     }
 
-    public List<String> getChannels() {
-        return getTokenizedMessage().getTargetNames();
+    public List<Target> getChannels() {
+        return getTokenizedMessage().getTargets();
     }
 
     @Override

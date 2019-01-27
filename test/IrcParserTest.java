@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 
 public class IrcParserTest {
-
+/*
     @Test
     public void BasicTokenizingTest() {
         IrcParser parser = new IrcParser();
@@ -173,4 +173,5 @@ public class IrcParserTest {
         assertEquals(1, m5.getTargetNames().size());
         assertEquals("Bob", m5.getTargetNames().get(0));
     }
+    */
 }

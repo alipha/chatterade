@@ -27,7 +27,7 @@ public class IrcMessageValidator {
             if(message.getTargetType() == TargetType.NONE)
                 throw new MalformedIrcMessageException(messageType.getIrcCommand(), "411", format(":No recipient given (%s)", messageType.getIrcCommand()));
 
-            throw new IllegalArgumentException(format("%s is an invalid target for command %s.", message.getTargetName().orElse("(none)"), messageType.getIrcCommand()));
+            throw new IllegalArgumentException(format("%s is an invalid target for command %s.", message.getTargetText().orElse("(none)"), messageType.getIrcCommand()));
         }
 
         if(message.getArguments().size() < validationType.getMinimumArgumentCount())

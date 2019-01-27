@@ -1,6 +1,7 @@
 package com.liph.chatterade.messaging.models;
 
 import com.liph.chatterade.messaging.enums.MessageType;
+import com.liph.chatterade.parsing.models.Target;
 import com.liph.chatterade.parsing.models.TokenizedMessage;
 import java.util.HashMap;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.Optional;
 
 public class JoinMessage extends Message {
 
-    private final Map<String, Optional<String>> channelKeyMap;
+    private final Map<Target, Optional<String>> channelKeyMap;
 
 
     public JoinMessage(TokenizedMessage tokenizedMessage) {
@@ -22,7 +23,7 @@ public class JoinMessage extends Message {
         List<String> args = getTokenizedMessage().getArguments();
         int argIndex = 0;
 
-        for(String channel : getTokenizedMessage().getTargetNames()) {
+        for(Target channel : getTokenizedMessage().getTargets()) {
             if(argIndex < args.size())
                 channelKeyMap.put(channel, Optional.of(args.get(argIndex)));
             else
@@ -33,7 +34,7 @@ public class JoinMessage extends Message {
     }
 
 
-    public Map<String, Optional<String>> getChannelKeyMap() {
+    public Map<Target, Optional<String>> getChannelKeyMap() {
         return channelKeyMap;
     }
 

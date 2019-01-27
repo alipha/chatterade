@@ -14,20 +14,22 @@ public class TokenizedMessage {
     private final Optional<MessageType> messageType;
     private final String messageTypeText;
     private final TargetType targetType;
-    private final Optional<String> targetName;
+    private final Optional<String> targetText;
+    private final List<Target> targets;
     private final List<String> arguments;
     private final boolean hasTrailingArgument;
     private final String rawMessage;
 
 
     public TokenizedMessage(Optional<String> senderName, Optional<MessageType> messageType, String messageTypeText,
-                            TargetType targetType, Optional<String> targetName,
+                            TargetType targetType, Optional<String> targetText, List<Target> targets,
                             List<String> arguments, boolean hasTrailingArgument, String rawMessage) {
         this.senderName = senderName;
         this.messageType = messageType;
         this.messageTypeText = messageTypeText;
         this.targetType = targetType;
-        this.targetName = targetName;
+        this.targetText = targetText;
+        this.targets = targets;
         this.arguments = arguments;
         this.hasTrailingArgument = hasTrailingArgument;
         this.rawMessage = rawMessage;
@@ -50,8 +52,12 @@ public class TokenizedMessage {
         return targetType;
     }
 
-    public Optional<String> getTargetName() {
-        return targetName;
+    public Optional<String> getTargetText() {
+        return targetText;
+    }
+
+    public List<Target> getTargets() {
+        return targets;
     }
 
     public List<String> getArguments() {
@@ -64,10 +70,5 @@ public class TokenizedMessage {
 
     public String getRawMessage() {
         return rawMessage;
-    }
-
-
-    public List<String> getTargetNames() {
-        return targetName.map(t -> Arrays.asList(t.split(","))).orElse(Collections.emptyList());
     }
 }
