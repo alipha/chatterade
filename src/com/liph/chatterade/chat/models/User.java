@@ -26,6 +26,12 @@ public class User extends ChatEntity {
         this.realName = Optional.of(realName);
     }
 
+    public User(Optional<String> nick, Optional<String> username, Optional<Key> key) {
+        setNick(nick);
+        this.username = username;
+        this.key = key;
+    }
+
 
     public Optional<String> getNick() {
         return getName();

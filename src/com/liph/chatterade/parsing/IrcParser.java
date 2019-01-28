@@ -2,6 +2,8 @@ package com.liph.chatterade.parsing;
 
 import static java.util.stream.Collectors.toList;
 
+import com.liph.chatterade.chat.models.User;
+import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.enums.TargetType;
@@ -161,5 +163,36 @@ public class IrcParser {
         }
 
         return new Target(targetType, nick, channel, publicKey);
+    }
+
+
+    public Optional<User> parseSender(Optional<String> sender) {
+        Optional<String> nick = Optional.empty();
+        Optional<String> username = Optional.empty();
+        Optional<String> publicKey = Optional.empty();
+
+        if(!sender.isPresent() || sender.get().isEmpty())
+            return Optional.empty();
+
+        String senderText = sender.get();
+
+        int at = senderText.lastIndexOf('@');
+
+        if(at > -1) {
+            publicKey = Optional.of(senderText.substring(at + 1));
+            senderText = senderText.substring(0, at);
+        }
+
+        int bang = senderText.lastIndexOf('!');
+
+        if(bang > -1) {
+            username = Optional.of(senderText.substring(bang + 1));
+            senderText = senderText.substring(0, bang);
+        }
+
+        if(!senderText.isEmpty())
+            nick = Optional.of(senderText);
+
+        return Optional.of(new User(nick, username, publicKey.map(Key::new)));
     }
 }

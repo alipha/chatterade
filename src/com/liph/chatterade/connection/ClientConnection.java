@@ -5,6 +5,7 @@ import static java.lang.String.format;
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.enums.MessageProcessMap;
+import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.connection.exceptions.ConnectionClosedException;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.messaging.models.NickMessage;
@@ -13,7 +14,11 @@ import com.liph.chatterade.messaging.models.UserMessage;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.parsing.IrcParser;
 import com.liph.chatterade.parsing.exceptions.MalformedIrcMessageException;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Optional;
 
@@ -21,6 +26,8 @@ import java.util.Optional;
 public class ClientConnection extends Connection {
 
     private final IrcParser ircParser;
+    private BufferedReader reader;
+    private PrintWriter writer;
 
     private Optional<ClientUser> user = Optional.empty();
 
@@ -32,6 +39,10 @@ public class ClientConnection extends Connection {
 
     @Override
     public void doRun() throws Exception {
+        reader = new BufferedReader(new InputStreamReader(input));
+        writer = new PrintWriter(output);
+
+
         Optional<String> serverPass = Optional.empty();
 
         // read PASS message, if sent
@@ -70,12 +81,24 @@ public class ClientConnection extends Connection {
 
     @Override
     public void doClose() throws Exception {
+        try {
+            reader.close();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            writer.close();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
         user.ifPresent(application::removeUser);
     }
 
 
     public void sendMessage(String message) {
-        System.out.println(format("%s <- %s", user.flatMap(u -> u.getNick()).orElse("unknown"), message));
+        System.out.println(format("%s <- %s", user.flatMap(User::getNick).orElse("unknown"), message));
         writer.write(message);
         writer.write("\r\n");
         writer.flush();
@@ -95,7 +118,7 @@ public class ClientConnection extends Connection {
                     line = reader.readLine();
                     if(line == null)
                         throw new ConnectionClosedException();
-                    System.out.println(format("%s -> %s", user.flatMap(u -> u.getNick()).orElse("unknown"), line));
+                    System.out.println(format("%s -> %s", user.flatMap(User::getNick).orElse("unknown"), line));
                 } while(line.trim().equals(""));
 
                 return ircParser.parse(line, true);

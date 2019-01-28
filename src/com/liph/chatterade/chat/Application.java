@@ -37,6 +37,7 @@ public class Application {
     private final EncryptionService encryptionService;
     private final ConnectionListener clientListener;
     private final ConnectionListener serverListener;
+    private final Set<ServerConnection> serverConnections;
 
     private final Map<String, ClientUser> clientUsersByPublicKey;
 
@@ -48,6 +49,7 @@ public class Application {
         this.encryptionService = new EncryptionService();
         this.clientListener = new ConnectionListener(this, clientPort, ClientConnection::new);
         this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new);
+        this.serverConnections = ConcurrentHashMap.newKeySet();
         this.clientUsersByPublicKey = new ConcurrentHashMap<>();
     }
 
@@ -61,6 +63,11 @@ public class Application {
 
     public String getServerName() {
         return serverName;
+    }
+
+
+    public void removeServer(ServerConnection server) {
+        serverConnections.remove(server);
     }
 
 
@@ -122,22 +129,25 @@ public class Application {
         Optional<ClientUser> target = targetAndPreviousNick.getFirst();
         Optional<String> previousNick = targetAndPreviousNick.getSecond();
         */
-        Optional<ClientUser> target = resolveTargetClientUser(message.getTarget(), message.getSender());
+        Optional<ClientUser> targetOpt = resolveTargetClientUser(message.getTarget(), message.getSender());
 
-        if(target.isPresent()) {
+        if(targetOpt.isPresent()) {
+            ClientUser target = targetOpt.get();
+            
             //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
-            String targetNick = target.get().getNick().get();
+            String targetNick = target.getNick().get();
 
             if(!targetNick.equals(message.getTargetText())) {
-                sendNickChange(message.getSender(), message.getTargetText(), targetNick);
+                sendNickChange(message.getSender(), message.getTargetText(), target);
             }
 
-            Optional<String> previousNick = target.get().addOrUpdateContact(message.getSender());
-            previousNick.ifPresent(previous -> sendNickChange(target.get(), previous, message.getSender().getNick().get()));
+            Optional<String> previousNick = target.addOrUpdateContact(message.getSender());
+            previousNick.ifPresent(previous -> sendNickChange(target, previous, message.getSender()));
 
-            target.get().getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+            target.getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
         } else {
-            message.getSender().getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTargetText()));
+
+            //message.getSender().getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTargetText()));
         }
     }
 
@@ -158,8 +168,9 @@ public class Application {
     }
 
 
-    private void sendNickChange(ClientUser user, String previousNick, String newNick) {
-        user.getConnection().sendMessage(format(":%s NICK %s", previousNick, newNick));
+    private void sendNickChange(ClientUser user, String previousNick, ClientUser contact) {
+        String publicKey = contact.getKey().map(Key::getBase64SigningPublicKey).orElse("unknown");
+        user.getConnection().sendMessage(format(":%s!%s@%s NICK %s", previousNick, contact.getUsername().orElse("unknown"), publicKey, contact.getNick().get()));
     }
 
     private Optional<ClientUser> resolveTargetClientUser(Target target, ClientUser sender) {
