@@ -21,7 +21,9 @@ public enum IrcMessageValidationMap {
     PASS   (1, Optional.of(1), DISALLOWED, NONE),
     PRIVMSG(1, Optional.of(1), REQUIRED  , CHANNEL_OR_USER),
     QUIT   (0, Optional.of(1), PERMITTED , NONE),
-    USER   (4, Optional.of(4), REQUIRED  , NONE);
+    USER   (4, Optional.of(4), REQUIRED  , NONE),
+    PING   (1, Optional.of(1), PERMITTED , NONE),
+    PONG   (1, Optional.of(1), PERMITTED , NONE);
 
 
     private final int minimumArgumentCount;

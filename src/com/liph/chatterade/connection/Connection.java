@@ -16,8 +16,6 @@ public abstract class Connection implements Runnable {
 
     protected InputStream input;
     protected OutputStream output;
-    protected BufferedReader reader;
-    protected PrintWriter writer;
 
 
     protected Connection(Application application, Socket socket) {
@@ -36,8 +34,6 @@ public abstract class Connection implements Runnable {
         try {
             input = socket.getInputStream();
             output = socket.getOutputStream();
-            reader = new BufferedReader(new InputStreamReader(input));
-            writer = new PrintWriter(output);
 
             doRun();
 
@@ -73,13 +69,5 @@ public abstract class Connection implements Runnable {
         } catch(Exception e) {
             e.printStackTrace();
         }
-
-        try {
-            reader.close();
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-
-        writer.close();
-    };
+    }
 }

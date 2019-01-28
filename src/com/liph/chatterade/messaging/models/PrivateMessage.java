@@ -16,6 +16,10 @@ public class PrivateMessage extends Message {
         return getTokenizedMessage().getTargets().get(0);
     }
 
+    public String getTargetText() {
+        return getTokenizedMessage().getTargetText().get();
+    }
+
     public String getText() {
         return getTokenizedMessage().getArguments().get(0);
     }

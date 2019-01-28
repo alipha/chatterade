@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Channel extends ChatEntity {
 
-    private Optional<String> key;
+    private Optional<String> key = Optional.empty();
     private final Set<User> users;
 
 

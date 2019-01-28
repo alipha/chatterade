@@ -1,6 +1,7 @@
 package com.liph.chatterade.messaging.models;
 
 import com.liph.chatterade.chat.models.ClientUser;
+import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.parsing.models.TokenizedMessage;
 
@@ -9,7 +10,7 @@ public abstract class Message {
 
     private final TokenizedMessage tokenizedMessage;
 
-    private ClientUser sender;
+    private User sender;
 
 
     protected Message(TokenizedMessage tokenizedMessage) {
@@ -25,11 +26,11 @@ public abstract class Message {
     }
 
 
-    public ClientUser getSender() {
+    public User getSender() {
         return sender;
     }
 
-    public void setSender(ClientUser sender) {
+    public void setSender(User sender) {
         this.sender = sender;
     }
 }
