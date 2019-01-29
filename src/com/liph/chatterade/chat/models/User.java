@@ -1,6 +1,8 @@
 package com.liph.chatterade.chat.models;
 
 
+import static java.lang.String.format;
+
 import com.liph.chatterade.chat.enums.ChatEntityType;
 import com.liph.chatterade.encryption.models.Key;
 import java.util.Optional;
@@ -65,6 +67,13 @@ public class User extends ChatEntity {
     public void setKey(Optional<Key> key) {
         this.key = key;
     }
+
+
+    public String getFullyQualifiedName() {
+        String publicKey = getKey().map(Key::getBase64SigningPublicKey).orElse("unknown");
+        return format("%s!%s@%s", getNick().orElse("unknown"), getUsername().orElse("unknown"), publicKey);
+    }
+
 
     @Override
     public ChatEntityType getType() {

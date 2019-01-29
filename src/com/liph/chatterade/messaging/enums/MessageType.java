@@ -16,7 +16,8 @@ public enum MessageType {
     QUIT   ("QUIT"   , QuitMessage::new   ),
     USER   ("USER"   , UserMessage::new   ),
     PING   ("PING"   , PingMessage::new   ),
-    PONG   ("PONG"   , PongMessage::new   );
+    PONG   ("PONG"   , PongMessage::new   ),
+    CONNECT("CONNECT", ConnectMessage::new);
 
 
     private final String ircCommand;

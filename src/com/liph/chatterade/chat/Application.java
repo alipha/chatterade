@@ -20,6 +20,7 @@ import com.liph.chatterade.messaging.enums.TargetType;
 import com.liph.chatterade.messaging.models.*;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
 import com.liph.chatterade.parsing.models.Target;
+import java.net.Socket;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -129,25 +130,35 @@ public class Application {
         Optional<ClientUser> target = targetAndPreviousNick.getFirst();
         Optional<String> previousNick = targetAndPreviousNick.getSecond();
         */
-        Optional<ClientUser> targetOpt = resolveTargetClientUser(message.getTarget(), message.getSender());
+        Optional<ClientUser> senderClientUser = Optional.empty();
+
+        if(message.getSender() instanceof ClientUser) {
+           senderClientUser = Optional.of((ClientUser)message.getSender());
+        }
+
+        Optional<User> targetOpt = resolveTargetUser(message.getTarget(), senderClientUser);
 
         if(targetOpt.isPresent()) {
-            ClientUser target = targetOpt.get();
+            User target = targetOpt.get();
             
             //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
             String targetNick = target.getNick().get();
 
             if(!targetNick.equals(message.getTargetText())) {
-                sendNickChange(message.getSender(), message.getTargetText(), target);
+                senderClientUser.ifPresent(u -> sendNickChange(u, message.getTargetText(), target));
             }
 
-            Optional<String> previousNick = target.addOrUpdateContact(message.getSender());
-            previousNick.ifPresent(previous -> sendNickChange(target, previous, message.getSender()));
+            if(target instanceof ClientUser) {
+                ClientUser targetClientUser = (ClientUser)target;
+                Optional<String> previousNick = targetClientUser.addOrUpdateContact(message.getSender());
+                previousNick.ifPresent(previous -> sendNickChange(targetClientUser, previous, message.getSender()));
 
-            target.getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+                targetClientUser.getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+            } else {
+                senderClientUser.ifPresent(u -> sendNetworkMessage(u, MessageType.PRIVMSG, target, format(":%s", message.getText())));
+            }
         } else {
-
-            //message.getSender().getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTargetText()));
+            senderClientUser.ifPresent(u -> u.getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTargetText())));
         }
     }
 
@@ -160,35 +171,68 @@ public class Application {
     }
 
     public void processPing(PingMessage message) {
-        message.getSender().getConnection().sendMessage(serverName, MessageType.PONG.getIrcCommand(), message.getText());
+        ((ClientUser)message.getSender()).getConnection().sendMessage(serverName, MessageType.PONG.getIrcCommand(), message.getText());
     }
 
     public void processPong(PongMessage message) {
 
     }
 
+    public void processConnect(ConnectMessage message) {
+        try {
+            Socket socket = new Socket(message.getServer(), message.getPort().orElse(6667));
+            serverConnections.add(new ServerConnection(this, socket));
+            System.out.println("Server added.");
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-    private void sendNickChange(ClientUser user, String previousNick, ClientUser contact) {
+
+    private void sendNetworkMessage(User sender, MessageType messageType, User target, String arguments) {
+        for(ServerConnection connection : serverConnections) {
+            connection.sendMessage(sender, messageType, target, arguments);
+        }
+    }
+
+    private void sendNickChange(ClientUser user, String previousNick, User contact) {
         String publicKey = contact.getKey().map(Key::getBase64SigningPublicKey).orElse("unknown");
         user.getConnection().sendMessage(format(":%s!%s@%s NICK %s", previousNick, contact.getUsername().orElse("unknown"), publicKey, contact.getNick().get()));
     }
 
-    private Optional<ClientUser> resolveTargetClientUser(Target target, ClientUser sender) {
+    private Optional<User> resolveTargetUser(Target target, Optional<ClientUser> sender) {
         if(target.getTargetType() != TargetType.USER)   // TODO: error?
             return Optional.empty(); //Pair.of(Optional.empty(), Optional.empty());
+
+        Optional<User> targetRemoteUser = Optional.empty();
+        Optional<Contact> targetContact = Optional.empty();
+
+        if(target.getPublicKey().isPresent())
+            targetRemoteUser = Optional.of(new User(target.getNick(), Optional.empty(), target.getPublicKey().map(Key::new)));
 
         Optional<ClientUser> targetClientUser = target.getPublicKey().flatMap(this::getClientUserByPublicKey);
         System.out.println(format("%s isPresent=%b", target.getPublicKey().orElse("none"), targetClientUser.isPresent()));
 
-        if(!targetClientUser.isPresent() && target.getNick().isPresent()) {
-            Optional<Contact> targetContact = sender.getContactByNick(target.getNick().get());
-            if(targetContact.isPresent()) {
-                targetClientUser = getClientUserByContact(targetContact.get());
+        if(sender.isPresent()) {
+            if (!targetClientUser.isPresent() && target.getNick().isPresent()) {
+                targetContact = sender.get().getContactByNick(target.getNick().get());
+                if (targetContact.isPresent()) {
+                    targetClientUser = getClientUserByContact(targetContact.get());
+                }
             }
+
+            if(targetClientUser.isPresent())
+                sender.get().addOrUpdateContact(targetClientUser.get());
+            else if(targetRemoteUser.isPresent() && targetRemoteUser.get().getNick().isPresent())
+                sender.get().addOrUpdateContact(targetRemoteUser.get());
         }
 
-        targetClientUser.ifPresent(sender::addOrUpdateContact);
-        return targetClientUser;
+        if(targetClientUser.isPresent())
+            return targetClientUser.map(u -> (User)u);
+        else if(targetContact.isPresent() && targetContact.get().getKey().isPresent())
+            return targetContact.map(u -> (User)u);
+        else
+            return targetRemoteUser;
         //Optional<String> previousNick = targetClientUser.flatMap(c -> sender.addOrUpdateContact(c.getNick(), c.getKey()));
         //return Pair.of(targetClientUser, previousNick);
     }

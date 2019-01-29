@@ -2,8 +2,10 @@ package com.liph.chatterade.connection;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.enums.MessageProcessMap;
+import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.connection.exceptions.ConnectionClosedException;
+import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.parsing.IrcParser;
 import com.liph.chatterade.parsing.exceptions.MalformedIrcMessageException;
@@ -44,6 +46,7 @@ public class ServerConnection extends Connection {
             message = readMessage();
             message.setSender(ircParser.parseSender(message.getTokenizedMessage().getSenderName()).get());  // TODO: sender for server messages?
             MessageProcessMap.process(application, message);
+            // TODO: add logic to pass along message to other servers
         }
     }
 
@@ -62,6 +65,13 @@ public class ServerConnection extends Connection {
         }
 
         application.removeServer(this);
+    }
+
+
+    public void sendMessage(User sender, MessageType messageType, User target, String message) {
+        String targetPublicKey = target.getKey().get().getBase64SigningPublicKey();
+        writer.write(format(":%s %s %s %s\r\n", sender.getFullyQualifiedName(), messageType.getIrcCommand(), targetPublicKey, message));
+        writer.flush();
     }
 
 

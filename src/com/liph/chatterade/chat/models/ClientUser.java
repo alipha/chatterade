@@ -26,13 +26,7 @@ public class ClientUser extends User {
     }
 
 
-    public String getFullyQualifiedName() {
-        String publicKey = getKey().map(Key::getBase64SigningPublicKey).orElse("unknown");
-        return format("%s!%s@%s", getNick().orElse("unknown"), getUsername().orElse("unknown"), publicKey);
-    }
-
-
-    public Optional<String> addOrUpdateContact(ClientUser contact) {
+    public Optional<String> addOrUpdateContact(User contact) {
         return addOrUpdateContact(contact.getNick(), contact.getKey());
     }
 

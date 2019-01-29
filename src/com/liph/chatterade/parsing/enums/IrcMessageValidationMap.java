@@ -23,7 +23,8 @@ public enum IrcMessageValidationMap {
     QUIT   (0, Optional.of(1), PERMITTED , NONE),
     USER   (4, Optional.of(4), REQUIRED  , NONE),
     PING   (1, Optional.of(1), PERMITTED , NONE),
-    PONG   (1, Optional.of(1), PERMITTED , NONE);
+    PONG   (1, Optional.of(1), PERMITTED , NONE),
+    CONNECT(1, Optional.of(2), DISALLOWED, NONE);
 
 
     private final int minimumArgumentCount;

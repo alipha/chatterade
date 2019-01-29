@@ -19,7 +19,8 @@ public enum MessageProcessMap {
     QUIT   (wrap(Application::processQuit)),
     USER   (wrap(Application::processUser)),
     PING   (wrap(Application::processPing)),
-    PONG   (wrap(Application::processPong));
+    PONG   (wrap(Application::processPong)),
+    CONNECT(wrap(Application::processConnect));
     
     
     private BiConsumer<Application, Message> consumer;
