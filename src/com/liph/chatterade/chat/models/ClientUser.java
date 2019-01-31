@@ -2,6 +2,7 @@ package com.liph.chatterade.chat.models;
 
 import static java.lang.String.format;
 
+import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.encryption.models.Key;
 
@@ -14,8 +15,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClientUser extends User {
 
     private final ClientConnection connection;
+
+    // TODO: keyed hash code to prevent DoS? Or limit the size of these Maps by removing unreplied-to contacts?
     private final Map<String, Contact> contactsByNick;
-    private final Map<String, Contact> contactsByPublicKey;
+    private final Map<ByteArray, Contact> contactsByPublicKey;
 
 
     public ClientUser(String nick, ClientConnection connection) {
@@ -33,7 +36,7 @@ public class ClientUser extends User {
     // TODO: remove Optional<String> return?
     public synchronized Optional<String> addOrUpdateContact(Optional<String> nick, Optional<Key> key) {
         Optional<Contact> contactByNick = nick.flatMap(this::getContactByNick);
-        Optional<Contact> contactByKey = key.map(Key::getBase64SigningPublicKey).flatMap(this::getContactByPublicKey);
+        Optional<Contact> contactByKey = key.map(Key::getSigningPublicKey).flatMap(this::getContactByPublicKey);
 
         if(!nick.isPresent() && !key.isPresent())   // TODO: error?
             return Optional.empty();
@@ -81,12 +84,12 @@ public class ClientUser extends User {
     }
 
 
-    private void addContact(Contact user) {
+    private synchronized void addContact(Contact user) {
         user.getNick().ifPresent(n -> contactsByNick.put(n.toLowerCase(), user));
-        user.getKey().ifPresent(k -> contactsByPublicKey.put(k.getBase64SigningPublicKey(), user));
+        user.getKey().ifPresent(k -> contactsByPublicKey.put(k.getSigningPublicKey(), user));
     }
 
-    private Optional<String> renameNick(Optional<Contact> contact, Optional<String> nick) {
+    private synchronized Optional<String> renameNick(Optional<Contact> contact, Optional<String> nick) {
         if(!contact.isPresent() || !nick.isPresent()) {
             throw new IllegalStateException(format("renameNick expects both contact and nick to be present. contact.isPresent=%b, nick.isPresent=%b",
                     contact.isPresent(), nick.isPresent()));
@@ -100,7 +103,7 @@ public class ClientUser extends User {
         return previousNick;
     }
 
-    private void removeNick(String nick) {
+    private synchronized void removeNick(String nick) {
         contactsByNick.remove(nick.toLowerCase());
     }
 
@@ -133,7 +136,7 @@ public class ClientUser extends User {
         return Optional.ofNullable(contactsByNick.get(nick.toLowerCase()));
     }
 
-    public synchronized Optional<Contact> getContactByPublicKey(String key) {
+    public synchronized Optional<Contact> getContactByPublicKey(ByteArray key) {
         return Optional.ofNullable(contactsByPublicKey.get(key));
     }
 

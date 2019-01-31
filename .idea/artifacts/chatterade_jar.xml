@@ -1,8 +1,0 @@
-<component name="ArtifactManager">
-  <artifact type="jar" build-on-make="true" name="chatterade:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/chatterade_jar</output-path>
-    <root id="archive" name="chatterade.jar">
-      <element id="module-output" name="chatterade" />
-    </root>
-  </artifact>
-</component>

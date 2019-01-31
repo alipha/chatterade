@@ -17,7 +17,7 @@ public class ConnectMessage extends Message {
 
     public Optional<Integer> getPort() {
         if(getTokenizedMessage().getArguments().size() > 1)
-            return Optional.of(Integer.valueOf(getTokenizedMessage().getArguments().get(1)));
+            return Optional.of(Integer.parseInt(getTokenizedMessage().getArguments().get(1)));
         else
             return Optional.empty();
     }

@@ -12,6 +12,7 @@ import com.liph.chatterade.parsing.exceptions.MalformedIrcMessageException;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.Optional;
 
 import static java.lang.String.format;
 
@@ -39,6 +40,8 @@ public class ServerConnection extends Connection {
         //writer = new DataOutputStream(output);
         reader = new BufferedReader(new InputStreamReader(input));
         writer = new PrintWriter(output);
+
+        application.addServerConnection(this);
 
         Message message;
 
@@ -68,9 +71,9 @@ public class ServerConnection extends Connection {
     }
 
 
-    public void sendMessage(User sender, MessageType messageType, User target, String message) {
-        String targetPublicKey = target.getKey().get().getBase64SigningPublicKey();
-        writer.write(format(":%s %s %s %s\r\n", sender.getFullyQualifiedName(), messageType.getIrcCommand(), targetPublicKey, message));
+    public void sendMessage(String message) {
+        writer.write(message);
+        writer.write("\r\n");
         writer.flush();
     }
 
@@ -84,7 +87,8 @@ public class ServerConnection extends Connection {
                     if(line == null)
                         throw new ConnectionClosedException();
                     System.out.println(format("%s -> %s", remoteAddress, line));
-                } while(line.trim().equals(""));
+                    // TODO: relay the *encrypted* message
+                } while(line.trim().equals("") || !application.relayMessage(line, Optional.of(this)));
 
                 return ircParser.parse(line, false);
             } catch (MalformedIrcMessageException e) {

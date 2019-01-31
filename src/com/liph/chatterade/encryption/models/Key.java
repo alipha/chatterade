@@ -1,5 +1,6 @@
 package com.liph.chatterade.encryption.models;
 
+import com.liph.chatterade.common.ByteArray;
 import com.muquit.libsodiumjna.SodiumKeyPair;
 import com.muquit.libsodiumjna.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
@@ -12,37 +13,37 @@ public class Key {
     private static Base64.Encoder base64encoder = Base64.getEncoder();
     private static Base64.Decoder base64decoder = Base64.getDecoder();
 
-    private final byte[] publicKey;
+    private final ByteArray publicKey;
     private final Optional<byte[]> privateKey;
 
 
     public Key(byte[] publicKey) {
-        this.publicKey = publicKey;
+        this.publicKey = new ByteArray(publicKey);
         this.privateKey = Optional.empty();
     }
 
     public Key(byte[] publicKey, byte[] privateKey) {
-        this.publicKey = publicKey;
+        this.publicKey = new ByteArray(publicKey);
         this.privateKey = Optional.of(privateKey);
     }
 
     public Key(String publicKey) {
-        this.publicKey = base64decoder.decode(publicKey);
+        this.publicKey = new ByteArray(base64decoder.decode(publicKey));
         this.privateKey = Optional.empty();
     }
 
     public Key(String publicKey, String privateKey) {
-        this.publicKey = base64decoder.decode(publicKey);
+        this.publicKey = new ByteArray(base64decoder.decode(publicKey));
         this.privateKey = Optional.of(base64decoder.decode(privateKey));
     }
 
     public Key(SodiumKeyPair keyPair) {
-        this.publicKey = keyPair.getPublicKey();
+        this.publicKey = new ByteArray(keyPair.getPublicKey());
         this.privateKey = Optional.of(keyPair.getPrivateKey());
     }
 
 
-    public byte[] getSigningPublicKey() {
+    public ByteArray getSigningPublicKey() {
         return publicKey;
     }
 
@@ -51,7 +52,7 @@ public class Key {
     }
 
     public String getBase64SigningPublicKey() {
-        return base64encoder.encodeToString(publicKey);
+        return base64encoder.encodeToString(publicKey.getBytes());
     }
 
     public Optional<String> getBase64SigningPrivateKey() {
@@ -60,7 +61,7 @@ public class Key {
 
     public byte[] getDHPublicKey() {
         try {
-            return SodiumLibrary.cryptoSignEdPkTOcurvePk(publicKey);
+            return SodiumLibrary.cryptoSignEdPkTOcurvePk(publicKey.getBytes());
         } catch(SodiumLibraryException e) {
             throw new RuntimeException(e);
         }

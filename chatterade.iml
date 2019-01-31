@@ -18,7 +18,21 @@
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="library" name="com.muquit.libsodiumjna:libsodium-jna:1.0.4" level="project" />
+    <orderEntry type="module-library" exported="">
+      <library name="com.muquit.libsodiumjna:libsodium-jna:1.0.4" type="repository">
+        <properties maven-id="com.muquit.libsodiumjna:libsodium-jna:1.0.4" />
+        <CLASSES>
+          <root url="jar://$MAVEN_REPOSITORY$/com/muquit/libsodiumjna/libsodium-jna/1.0.4/libsodium-jna-1.0.4.jar!/" />
+          <root url="jar://$MAVEN_REPOSITORY$/net/java/dev/jna/jna/4.2.2/jna-4.2.2.jar!/" />
+          <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.21/slf4j-api-1.7.21.jar!/" />
+          <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-log4j12/1.7.21/slf4j-log4j12-1.7.21.jar!/" />
+          <root url="jar://$MAVEN_REPOSITORY$/log4j/log4j/1.2.17/log4j-1.2.17.jar!/" />
+          <root url="jar://$MAVEN_REPOSITORY$/commons-codec/commons-codec/1.10/commons-codec-1.10.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
     <orderEntry type="module-library" scope="TEST">
       <library name="JUnit5.0">
         <CLASSES>

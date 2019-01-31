@@ -1,10 +1,14 @@
 package com.liph.chatterade.parsing.models;
 
 
+import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.messaging.enums.TargetType;
+import java.util.Base64;
 import java.util.Optional;
 
 public class Target {
+
+    private static Base64.Decoder base64decoder = Base64.getDecoder();
 
     private final TargetType targetType;
     private final Optional<String> nick;
@@ -34,5 +38,9 @@ public class Target {
 
     public Optional<String> getPublicKey() {
         return publicKey;
+    }
+
+    public Optional<ByteArray> getPublicKeyBytes() {
+        return publicKey.map(k -> new ByteArray(base64decoder.decode(k)));
     }
 }
