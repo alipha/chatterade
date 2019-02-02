@@ -1,14 +1,20 @@
 package com.liph.chatterade.encryption;
 
+import static java.lang.String.format;
+
 import com.liph.chatterade.common.ByteArray;
+import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.encryption.models.Key;
 import com.muquit.libsodiumjna.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import com.sun.jna.Platform;
+import java.util.Arrays;
+import java.util.Optional;
 
 
 public class EncryptionService {
 
+    private static final int SIGNATURE_SIZE = 64;
     private static boolean isInitialized = false;
 
     private final byte[] messageHashSalt;
@@ -36,7 +42,94 @@ public class EncryptionService {
 
     public ByteArray getMessageHash(String message) {
         try {
-            return new ByteArray(SodiumLibrary.cryptoGenerichash(concatArrays(messageHashSalt, message.getBytes()), 16));
+            return new ByteArray(SodiumLibrary.cryptoGenerichash(concat(messageHashSalt, message.getBytes()), 16));
+        } catch (SodiumLibraryException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public byte[] encryptMessage(Key sender, Key target, ByteArray recentMessageHash, String message) {
+        try {
+            byte[] toSign = concat(getPublicKeyHash(target), message.getBytes());
+            byte[] signature = SodiumLibrary.cryptoSignDetached(toSign, sender.getSigningPrivateKey().get());
+
+            byte[] salt = SodiumLibrary.randomBytes(4);
+            byte[] saltedTargetPublicKey = getShortPublicKeyHash(salt, target);
+            byte[] toEncrypt = concat(sender.getSigningPublicKey().getBytes(), signature, toSign);
+            byte[] encryptedMessage = SodiumLibrary.cryptoBoxSeal(toEncrypt, target.getDHPublicKey());
+
+            return concat(recentMessageHash.getBytes(), salt, saltedTargetPublicKey, encryptedMessage);
+
+        } catch (SodiumLibraryException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public Optional<DecryptedMessage> decryptMessage(Key recipient, byte[] message) {
+        ByteArray recentMessageHash = new ByteArray(message, 16);   // TODO: check recentMessage prior to calling this method
+
+        byte[] salt = Arrays.copyOfRange(message, 16, 20);
+        byte[] shortPublicKeyHash = Arrays.copyOfRange(message, 20, 24);
+
+        if(!Arrays.equals(getShortPublicKeyHash(salt, recipient), shortPublicKeyHash)) {
+            System.out.println(format("%s was not the recipient.", recipient.getBase64SigningPublicKey()));
+            return Optional.empty();
+        }
+
+        byte[] encryptedMessage = Arrays.copyOfRange(message, 24, message.length);
+        byte[] decryptedMessage;
+
+        try {
+            decryptedMessage = SodiumLibrary.cryptoBoxSealOpen(encryptedMessage, recipient.getDHPublicKey(), recipient.getDHPrivateKey().get());
+        } catch (SodiumLibraryException e) {
+            System.out.println(format("Short hash matched, but %s was not the intended recipient.", recipient.getBase64SigningPublicKey()));
+            return Optional.empty();
+        }
+
+        try {
+            ByteArray senderPublicKey = new ByteArray(decryptedMessage, Key.BYTE_SIZE);
+
+            int signatureEndPos = Key.BYTE_SIZE + SIGNATURE_SIZE;
+            byte[] signature = Arrays.copyOfRange(decryptedMessage, Key.BYTE_SIZE, signatureEndPos);
+            byte[] signedMessage = Arrays.copyOfRange(decryptedMessage, signatureEndPos, decryptedMessage.length);
+
+            if(!SodiumLibrary.cryptoSignVerifyDetached(signature, signedMessage, senderPublicKey.getBytes())) {
+                System.out.println("Signature did not match.");
+                return Optional.empty();
+            }
+
+            byte[] recipientPublicKeyHash = Arrays.copyOf(signedMessage, 16);
+
+            if(!Arrays.equals(getPublicKeyHash(recipient), recipientPublicKeyHash)) {
+                System.out.println(format("Signed message was not for recipient %s", recipient.getBase64SigningPublicKey()));
+                return Optional.empty();
+            }
+
+            String messageStr = new String(signedMessage, 16, signedMessage.length - 16);
+
+            return Optional.of(new DecryptedMessage(recentMessageHash, senderPublicKey, recipient, messageStr));
+
+        } catch (SodiumLibraryException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+
+    public byte[] getPublicKeyHash(Key key) {
+        try {
+            return SodiumLibrary.cryptoGenerichash(key.getSigningPublicKey().getBytes(), 16);
+        } catch (SodiumLibraryException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public byte[] getShortPublicKeyHash(byte[] salt, Key key) {
+        try {
+            return Arrays.copyOf(SodiumLibrary.cryptoGenerichash(concat(salt, key.getSigningPublicKey().getBytes()), 16), 4);
         } catch (SodiumLibraryException e) {
             throw new RuntimeException(e);
         }
@@ -69,10 +162,19 @@ public class EncryptionService {
     }
 
 
-    private byte[] concatArrays(byte[] a, byte[] b) {
-        byte[] c = new byte[a.length + b.length];
-        System.arraycopy(a, 0, c, 0, a.length);
-        System.arraycopy(b, 0, c, a.length, b.length);
-        return c;
+    private byte[] concat(byte[]... arrays) {
+        int totalLen = 0;
+        for(byte[] array : arrays)
+            totalLen += array.length;
+
+        byte[] result = new byte[totalLen];
+        int destPos = 0;
+
+        for(byte[] array : arrays) {
+            System.arraycopy(array, 0, arrays, destPos, array.length);
+            destPos += array.length;
+        }
+
+        return result;
     }
 }

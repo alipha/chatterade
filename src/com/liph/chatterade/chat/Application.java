@@ -15,6 +15,7 @@ import com.liph.chatterade.common.Pair;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
+import com.liph.chatterade.connection.models.RecentMessage;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.messaging.enums.MessageType;
@@ -24,6 +25,7 @@ import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
 import com.liph.chatterade.parsing.models.Target;
 import java.net.Socket;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +40,7 @@ import java.util.stream.Stream;
 public class Application {
 
     private static final int RECENT_MESSAGE_SET_MAX_SIZE = 10000;
+    private static final int RECENT_MESSAGE_MAX_AGE_MS = 1000 * 60;
 
     private final Instant startupTime;
     private final String serverName;
@@ -50,8 +53,8 @@ public class Application {
     // TODO: keyed hash code to prevent DoS?
     private final Map<ByteArray, ClientUser> clientUsersByPublicKey;
 
-    private final Set<ByteArray> recentMessageSet;
-    private final Queue<ByteArray> recentMessageQueue;
+    private final Map<ByteArray, RecentMessage> recentMessageSet;
+    private final Queue<RecentMessage> recentMessageQueue;
 
 
     public Application(String serverName, String serverVersion, int clientPort, int serverPort) {
@@ -63,7 +66,7 @@ public class Application {
         this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new);
         this.serverConnections = ConcurrentHashMap.newKeySet();
         this.clientUsersByPublicKey = new ConcurrentHashMap<>();
-        this.recentMessageSet = new HashSet<>();
+        this.recentMessageSet = new HashMap<>();
         this.recentMessageQueue = new LinkedList<>();
     }
 
@@ -206,9 +209,9 @@ public class Application {
 
 
     public boolean relayMessage(String message, Optional<ServerConnection> originator) {
-        ByteArray hash = encryptionService.getMessageHash(message);
+        RecentMessage recentMessage = new RecentMessage(encryptionService.getMessageHash(message));
 
-        if(!addToRecentMessages(hash))
+        if(!addToRecentMessages(recentMessage))
             return false;
 
         for(ServerConnection connection : serverConnections) {
@@ -220,21 +223,18 @@ public class Application {
     }
 
 
-    private boolean addToRecentMessages(ByteArray messageHash) {
+    private boolean addToRecentMessages(RecentMessage message) {
         synchronized (recentMessageSet) {
-            if(!recentMessageSet.add(messageHash)) {
-                System.out.println(" Seen " + messageHash);
+            while(recentMessageQueue.size() > RECENT_MESSAGE_SET_MAX_SIZE || (!recentMessageQueue.isEmpty() && recentMessageQueue.peek().getAgeMs() > RECENT_MESSAGE_MAX_AGE_MS)) {
+                RecentMessage evicted = recentMessageQueue.remove();
+                recentMessageSet.remove(evicted.getHash());
+            }
+
+            if(recentMessageSet.containsKey(message.getHash()))
                 return false;
-            }
 
-            System.out.println("  New " + messageHash);
-
-            recentMessageQueue.add(messageHash);
-            if(recentMessageQueue.size() > RECENT_MESSAGE_SET_MAX_SIZE) {
-                ByteArray expired = recentMessageQueue.remove();
-                recentMessageSet.remove(expired);
-                System.out.println("Evict " + messageHash);
-            }
+            recentMessageSet.put(message.getHash(), message);
+            recentMessageQueue.add(message);
             return true;
         }
     }

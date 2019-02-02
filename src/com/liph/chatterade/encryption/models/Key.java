@@ -10,6 +10,8 @@ import java.util.Optional;
 
 public class Key {
 
+    public static final int BYTE_SIZE = 32;
+
     private static Base64.Encoder base64encoder = Base64.getEncoder();
     private static Base64.Decoder base64decoder = Base64.getDecoder();
 

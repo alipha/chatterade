@@ -19,6 +19,11 @@ public class ByteArray {
     }
 
 
+    public ByteArray(byte[] bytes, int offset, int length) {
+        this.bytes = Arrays.copyOfRange(bytes, offset, offset + length);
+    }
+
+
     public byte[] getBytes() {
         return bytes;
     }
