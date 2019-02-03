@@ -70,7 +70,7 @@ public class User extends ChatEntity {
 
 
     public String getFullyQualifiedName() {
-        String publicKey = getKey().map(Key::getBase64SigningPublicKey).orElse("unknown");
+        String publicKey = getKey().map(Key::getBase32SigningPublicKey).orElse("unknown");
         return format("%s!%s@%s", getNick().orElse("unknown"), getUsername().orElse("unknown"), publicKey);
     }
 

@@ -136,7 +136,7 @@ public class IrcParser {
         Optional<String> channel = Optional.empty();
         Optional<String> publicKey = Optional.empty();
 
-        String[] targetParts = targetText.split("@");
+        String[] targetParts = targetText.split("\\^");
 
         if(targetParts.length == 2) {
             publicKey = Optional.of(targetParts[1]);

@@ -1,26 +1,35 @@
 package com.liph.chatterade.common;
 
+import com.liph.chatterade.encryption.EncryptionService;
+import java.security.MessageDigest;
 import java.util.Arrays;
-import java.util.Base64;
 
 
 public class ByteArray {
 
-    private static Base64.Encoder base64encoder = Base64.getEncoder();
     private final byte[] bytes;
+    private final int hashCode;
 
 
     public ByteArray(byte[] bytes) {
         this.bytes = bytes;
+        this.hashCode = EncryptionService.getInstance().getHashCode(this.bytes);
     }
 
     public ByteArray(byte[] bytes, int length) {
         this.bytes = Arrays.copyOf(bytes, length);
+        this.hashCode = EncryptionService.getInstance().getHashCode(this.bytes);
     }
 
 
     public ByteArray(byte[] bytes, int offset, int length) {
         this.bytes = Arrays.copyOfRange(bytes, offset, offset + length);
+        this.hashCode = EncryptionService.getInstance().getHashCode(this.bytes);
+    }
+
+    public ByteArray(String base32) {
+        this.bytes = Base32Encoder.getBytes(base32);
+        this.hashCode = EncryptionService.getInstance().getHashCode(this.bytes);
     }
 
 
@@ -31,7 +40,7 @@ public class ByteArray {
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(bytes);
+        return hashCode;
     }
 
     @Override
@@ -45,11 +54,11 @@ public class ByteArray {
 
         ByteArray other = (ByteArray) obj;
 
-        return Arrays.equals(bytes, other.bytes);
+        return MessageDigest.isEqual(bytes, other.bytes);
     }
 
     @Override
     public String toString() {
-        return base64encoder.encodeToString(bytes);
+        return Base32Encoder.getBase32(bytes);
     }
 }

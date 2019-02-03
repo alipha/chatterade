@@ -16,9 +16,19 @@ public class EncryptionService {
 
     private static final int SIGNATURE_SIZE = 64;
     private static boolean isInitialized = false;
+    
+    private static EncryptionService instance;
+    
 
-    private final byte[] messageHashSalt;
+    private final byte[] hashCodeSalt;
 
+    
+    public static EncryptionService getInstance() {
+        if(instance == null)
+            instance = new EncryptionService();
+        return instance;
+    }
+    
 
     public EncryptionService() {
         if(!isInitialized) {
@@ -27,7 +37,7 @@ public class EncryptionService {
         }
 
         // add salt so the hash set organization is unpredictable and can't be DoS'd
-        messageHashSalt = SodiumLibrary.randomBytes(16);
+        hashCodeSalt = SodiumLibrary.randomBytes(16);
     }
 
 
@@ -42,7 +52,17 @@ public class EncryptionService {
 
     public ByteArray getMessageHash(String message) {
         try {
-            return new ByteArray(SodiumLibrary.cryptoGenerichash(concat(messageHashSalt, message.getBytes()), 16));
+            return new ByteArray(SodiumLibrary.cryptoGenerichash(message.getBytes(), 16));
+        } catch (SodiumLibraryException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public int getHashCode(byte[] bytes) {
+        try {
+            byte[] hash = SodiumLibrary.cryptoGenerichash(concat(hashCodeSalt, bytes), 16);
+            return (hash[0] & 0xff) | ((hash[1] & 0xff) << 8) | ((hash[2] & 0xff) << 16) | ((hash[3] & 0xff) << 24);
         } catch (SodiumLibraryException e) {
             throw new RuntimeException(e);
         }
@@ -74,7 +94,7 @@ public class EncryptionService {
         byte[] shortPublicKeyHash = Arrays.copyOfRange(message, 20, 24);
 
         if(!Arrays.equals(getShortPublicKeyHash(salt, recipient), shortPublicKeyHash)) {
-            System.out.println(format("%s was not the recipient.", recipient.getBase64SigningPublicKey()));
+            System.out.println(format("%s was not the recipient.", recipient.getBase32SigningPublicKey()));
             return Optional.empty();
         }
 
@@ -84,7 +104,7 @@ public class EncryptionService {
         try {
             decryptedMessage = SodiumLibrary.cryptoBoxSealOpen(encryptedMessage, recipient.getDHPublicKey(), recipient.getDHPrivateKey().get());
         } catch (SodiumLibraryException e) {
-            System.out.println(format("Short hash matched, but %s was not the intended recipient.", recipient.getBase64SigningPublicKey()));
+            System.out.println(format("Short hash matched, but %s was not the intended recipient.", recipient.getBase32SigningPublicKey()));
             return Optional.empty();
         }
 
@@ -103,7 +123,7 @@ public class EncryptionService {
             byte[] recipientPublicKeyHash = Arrays.copyOf(signedMessage, 16);
 
             if(!Arrays.equals(getPublicKeyHash(recipient), recipientPublicKeyHash)) {
-                System.out.println(format("Signed message was not for recipient %s", recipient.getBase64SigningPublicKey()));
+                System.out.println(format("Signed message was not for recipient %s", recipient.getBase32SigningPublicKey()));
                 return Optional.empty();
             }
 
@@ -171,7 +191,7 @@ public class EncryptionService {
         int destPos = 0;
 
         for(byte[] array : arrays) {
-            System.arraycopy(array, 0, arrays, destPos, array.length);
+            System.arraycopy(array, 0, result, destPos, array.length);
             destPos += array.length;
         }
 

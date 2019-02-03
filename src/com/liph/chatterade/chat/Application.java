@@ -94,7 +94,7 @@ public class Application {
 
         clientUsersByPublicKey.put(key.getSigningPublicKey(), user);
 
-        sendWelcomeMessage(user.getConnection(), key.getBase64SigningPublicKey(), user);
+        sendWelcomeMessage(user.getConnection(), key.getBase32SigningPublicKey(), user);
         return user;
     }
 
@@ -156,7 +156,7 @@ public class Application {
             User target = targetOpt.get();
             
             //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
-            String targetNick = target.getNick().orElse(target.getKey().get().getBase64SigningPublicKey());
+            String targetNick = target.getNick().orElse(target.getKey().get().getBase32SigningPublicKey());
 
             if(!targetNick.equals(message.getTargetText())) {
                 senderClientUser.ifPresent(u -> sendNickChange(u, message.getTargetText(), target));
@@ -241,14 +241,14 @@ public class Application {
 
 
     private void sendNetworkMessage(User sender, MessageType messageType, User target, String arguments) {
-        String targetPublicKey = target.getKey().get().getBase64SigningPublicKey();
+        String targetPublicKey = target.getKey().get().getBase32SigningPublicKey();
         String message = format(":%s %s %s %s", sender.getFullyQualifiedName(), messageType.getIrcCommand(), targetPublicKey, arguments);
         // TODO: relay the *encrypted* message
         relayMessage(message, Optional.empty());
     }
 
     private void sendNickChange(ClientUser user, String previousNick, User contact) {
-        String publicKey = contact.getKey().map(Key::getBase64SigningPublicKey).orElse("unknown");
+        String publicKey = contact.getKey().map(Key::getBase32SigningPublicKey).orElse("unknown");
         user.getConnection().sendMessage(format(":%s!%s@%s NICK %s", previousNick, contact.getUsername().orElse("unknown"), publicKey, contact.getNick().get()));
     }
 
@@ -302,7 +302,7 @@ public class Application {
     }
 
 
-    private void sendWelcomeMessage(ClientConnection connection, String keyBase64, ClientUser user) {
+    private void sendWelcomeMessage(ClientConnection connection, String keyBase32, ClientUser user) {
         connection.sendMessage(serverName, "001", format(":Welcome to the Internet Relay Network %s", user.getFullyQualifiedName()));
         connection.sendMessage(serverName, "002", format(":Your host is %s, running version %s", serverName, serverVersion));
         connection.sendMessage(serverName, "003", format(":This server was created %s", startupTime));
@@ -310,7 +310,7 @@ public class Application {
         connection.sendMessage(serverName, "375", format(":- %s Message of the Day -", serverName));
         connection.sendMessage(serverName, "372", "Welcome to my test chatterade server!");
         connection.sendMessage(serverName, "376", ":End of /MOTD command.");
-        connection.sendMessage(serverName, "NOTICE", format(":Your public key is %s. Users need to /msg %s@%s to message you.", keyBase64, user.getNick().get(), keyBase64));
+        connection.sendMessage(serverName, "NOTICE", format(":Your public key is %s. Users need to /msg %s^%s to message you.", keyBase32, user.getNick().get(), keyBase32));
     }
 
     private void verifyCodeConsistency() {
