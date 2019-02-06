@@ -17,14 +17,17 @@ import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.connection.models.RecentMessage;
 import com.liph.chatterade.encryption.EncryptionService;
+import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.enums.TargetType;
 import com.liph.chatterade.messaging.models.*;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
 import com.liph.chatterade.parsing.models.Target;
+import java.io.IOException;
 import java.net.Socket;
 import java.time.Instant;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -54,7 +57,7 @@ public class Application {
     private final Map<ByteArray, ClientUser> clientUsersByPublicKey;
 
     private final Map<ByteArray, RecentMessage> recentMessageSet;
-    private final Queue<RecentMessage> recentMessageQueue;
+    private final Deque<RecentMessage> recentMessageQueue;
 
 
     public Application(String serverName, String serverVersion, int clientPort, int serverPort) {
@@ -208,14 +211,15 @@ public class Application {
     }
 
 
-    public boolean relayMessage(String message, Optional<ServerConnection> originator) {
+    public boolean relayMessage(byte[] message, Optional<ServerConnection> originator) {
         RecentMessage recentMessage = new RecentMessage(encryptionService.getMessageHash(message));
 
-        if(!addToRecentMessages(recentMessage))
+        if(!addToRecentMessages(recentMessage, originator))
             return false;
 
         for(ServerConnection connection : serverConnections) {
-            if(!originator.isPresent() || connection != originator.get())
+            // !originator.isPresent() is simply an optimization
+            if(!originator.isPresent() || !recentMessage.getOriginators().contains(connection))
                 connection.sendMessage(message);
         }
 
@@ -223,19 +227,47 @@ public class Application {
     }
 
 
-    private boolean addToRecentMessages(RecentMessage message) {
+    public Optional<DecryptedMessage> decryptMessage(byte[] encryptedMessage) {
+
+        for(ClientUser user : clientUsersByPublicKey.values()) {
+            Optional<DecryptedMessage> decryptedMessage = encryptionService.decryptMessage(user.getKey().get(), encryptedMessage);
+            if(decryptedMessage.isPresent())
+                return decryptedMessage;
+        }
+
+        return Optional.empty();
+    }
+
+
+    private boolean addToRecentMessages(RecentMessage message, Optional<ServerConnection> originator) {
         synchronized (recentMessageSet) {
-            while(recentMessageQueue.size() > RECENT_MESSAGE_SET_MAX_SIZE || (!recentMessageQueue.isEmpty() && recentMessageQueue.peek().getAgeMs() > RECENT_MESSAGE_MAX_AGE_MS)) {
-                RecentMessage evicted = recentMessageQueue.remove();
+            while(recentMessageQueue.size() > RECENT_MESSAGE_SET_MAX_SIZE || (!recentMessageQueue.isEmpty() && recentMessageQueue.peekLast().getAgeMs() > RECENT_MESSAGE_MAX_AGE_MS)) {
+                RecentMessage evicted = recentMessageQueue.removeLast();
                 recentMessageSet.remove(evicted.getHash());
             }
 
-            if(recentMessageSet.containsKey(message.getHash()))
+            RecentMessage existingMessage = recentMessageSet.get(message.getHash());
+            if(existingMessage != null) {
+                originator.ifPresent(o -> existingMessage.getOriginators().add(o));
                 return false;
+            }
 
+            originator.ifPresent(o -> message.getOriginators().add(o));
             recentMessageSet.put(message.getHash(), message);
-            recentMessageQueue.add(message);
+            recentMessageQueue.addFirst(message);
             return true;
+        }
+    }
+
+
+    private ByteArray getMostRecentMessage() {
+        synchronized (recentMessageSet) {
+            if(recentMessageQueue.isEmpty()) {
+                // TODO: exception?
+                return new ByteArray(new byte[16]);
+            } else {
+                return recentMessageQueue.getFirst().getHash();
+            }
         }
     }
 
@@ -243,8 +275,9 @@ public class Application {
     private void sendNetworkMessage(User sender, MessageType messageType, User target, String arguments) {
         String targetPublicKey = target.getKey().get().getBase32SigningPublicKey();
         String message = format(":%s %s %s %s", sender.getFullyQualifiedName(), messageType.getIrcCommand(), targetPublicKey, arguments);
-        // TODO: relay the *encrypted* message
-        relayMessage(message, Optional.empty());
+
+        byte[] encryptedMessage = encryptionService.encryptMessage(sender.getKey().get(), target.getKey().get(), getMostRecentMessage(), message);
+        relayMessage(encryptedMessage, Optional.empty());
     }
 
     private void sendNickChange(ClientUser user, String previousNick, User contact) {

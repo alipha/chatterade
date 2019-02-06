@@ -50,6 +50,7 @@ public class IrcParser {
             text = "";
         }
 
+        text = text.replaceAll("[\\r\\n\0]", "");
         String originalText = text;
         text = text.trim();
 
@@ -146,7 +147,7 @@ public class IrcParser {
             if(targetParts[0].startsWith("#") || targetParts[0].startsWith("&")) {
                 targetType = TargetType.CHANNEL;
 
-                if(targetParts[0].length() == 45) {     // TODO: better public key identification
+                if(targetParts[0].length() == 53) {     // TODO: better public key identification
                     publicKey = Optional.of(targetParts[0].substring(1));
                 } else {
                     channel = Optional.of(targetParts[0]);
@@ -154,7 +155,7 @@ public class IrcParser {
             } else {
                 targetType = TargetType.USER;
 
-                if(targetParts[0].length() == 44) {     // TODO: better public key identification
+                if(targetParts[0].length() == 52) {     // TODO: better public key identification
                     publicKey = Optional.of(targetParts[0]);
                 } else {
                     nick = Optional.of(targetParts[0]);

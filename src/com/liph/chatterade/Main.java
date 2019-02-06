@@ -24,12 +24,14 @@ public class Main {
         if(args.length >= 2)
             serverPort = Integer.parseInt(args[1]);
 
+        /*
         try {
             timing();
         } catch(SodiumLibraryException e) {
             e.printStackTrace();
             return;
         }
+        */
 
         /*
         BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
@@ -43,8 +45,8 @@ public class Main {
         int serverPort = clientPort + 1;
         */
 
-        //Application application = new Application("alipha.ddns.net", "0.1", clientPort, serverPort);
-        //application.run();
+        Application application = new Application("alipha.ddns.net", "0.1", clientPort, serverPort);
+        application.run();
     }
 
 

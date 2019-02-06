@@ -2,10 +2,7 @@ package com.liph.chatterade.connection;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.enums.MessageProcessMap;
-import com.liph.chatterade.chat.models.ClientUser;
-import com.liph.chatterade.chat.models.User;
-import com.liph.chatterade.connection.exceptions.ConnectionClosedException;
-import com.liph.chatterade.messaging.enums.MessageType;
+import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.parsing.IrcParser;
 import com.liph.chatterade.parsing.exceptions.MalformedIrcMessageException;
@@ -19,10 +16,8 @@ import static java.lang.String.format;
 public class ServerConnection extends Connection {
 
     private final IrcParser ircParser;
-    private BufferedReader reader;
-    private PrintWriter writer;
-    //private DataInputStream reader;
-    //private DataOutputStream writer;
+    private DataInputStream reader;
+    private DataOutputStream writer;
 
     private final String remoteAddress;
 
@@ -36,10 +31,8 @@ public class ServerConnection extends Connection {
 
     @Override
     public void doRun() throws Exception {
-        //reader = new DataInputStream(input);
-        //writer = new DataOutputStream(output);
-        reader = new BufferedReader(new InputStreamReader(input));
-        writer = new PrintWriter(output);
+        reader = new DataInputStream(input);
+        writer = new DataOutputStream(output);
 
         application.addServerConnection(this);
 
@@ -71,28 +64,34 @@ public class ServerConnection extends Connection {
     }
 
 
-    public void sendMessage(String message) {
-        writer.write(message);
-        writer.write("\r\n");
-        writer.flush();
+    public void sendMessage(byte[] message) {
+        try {
+            writer.writeShort(message.length);
+            writer.write(message);
+            writer.flush();
+        } catch(IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
     private Message readMessage() throws IOException {
         while(true) {
             try {
-                String line;
-                do {
-                    line = reader.readLine();
-                    if(line == null)
-                        throw new ConnectionClosedException();
-                    System.out.println(format("%s -> %s", remoteAddress, line));
-                    // TODO: relay the *encrypted* message
-                } while(line.trim().equals("") || !application.relayMessage(line, Optional.of(this)));
+                short length = reader.readShort();
 
-                return ircParser.parse(line, false);
+                byte[] encryptedMessage = new byte[length];
+                reader.readFully(encryptedMessage);
+
+                if(!application.relayMessage(encryptedMessage, Optional.of(this)))
+                    continue;
+
+                Optional<DecryptedMessage> message = application.decryptMessage(encryptedMessage);
+                // TODO: validate recent message hash before processing
+
+                if(message.isPresent())
+                    return ircParser.parse(message.get().getMessage(), false);
             } catch (MalformedIrcMessageException e) {
-                //sendMessage(application.getServerName(), e.getErrorCode(), e.getMessage());
                 e.printStackTrace();
             }
         }

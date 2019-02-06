@@ -50,9 +50,9 @@ public class EncryptionService {
     }
 
 
-    public ByteArray getMessageHash(String message) {
+    public ByteArray getMessageHash(byte[] message) {
         try {
-            return new ByteArray(SodiumLibrary.cryptoGenerichash(message.getBytes(), 16));
+            return new ByteArray(SodiumLibrary.cryptoGenerichash(message, 16));
         } catch (SodiumLibraryException e) {
             throw new RuntimeException(e);
         }
@@ -71,7 +71,7 @@ public class EncryptionService {
 
     public byte[] encryptMessage(Key sender, Key target, ByteArray recentMessageHash, String message) {
         try {
-            byte[] toSign = concat(getPublicKeyHash(target), message.getBytes());
+            byte[] toSign = concat(recentMessageHash.getBytes(), getPublicKeyHash(target), message.getBytes());
             byte[] signature = SodiumLibrary.cryptoSignDetached(toSign, sender.getSigningPrivateKey().get());
 
             byte[] salt = SodiumLibrary.randomBytes(4);
@@ -79,7 +79,7 @@ public class EncryptionService {
             byte[] toEncrypt = concat(sender.getSigningPublicKey().getBytes(), signature, toSign);
             byte[] encryptedMessage = SodiumLibrary.cryptoBoxSeal(toEncrypt, target.getDHPublicKey());
 
-            return concat(recentMessageHash.getBytes(), salt, saltedTargetPublicKey, encryptedMessage);
+            return concat(salt, saltedTargetPublicKey, encryptedMessage);
 
         } catch (SodiumLibraryException e) {
             throw new RuntimeException(e);
@@ -88,23 +88,31 @@ public class EncryptionService {
 
 
     public Optional<DecryptedMessage> decryptMessage(Key recipient, byte[] message) {
-        ByteArray recentMessageHash = new ByteArray(message, 16);   // TODO: check recentMessage prior to calling this method
+        if(message.length < 8 + Key.BYTE_SIZE + SIGNATURE_SIZE + 32) {
+            System.out.println(format("Message was too short: %d < %d", message.length, 8 + Key.BYTE_SIZE + SIGNATURE_SIZE + 32));
+            return Optional.empty();
+        }
 
-        byte[] salt = Arrays.copyOfRange(message, 16, 20);
-        byte[] shortPublicKeyHash = Arrays.copyOfRange(message, 20, 24);
+        byte[] salt = Arrays.copyOfRange(message, 0, 4);
+        byte[] shortPublicKeyHash = Arrays.copyOfRange(message, 4, 8);
 
         if(!Arrays.equals(getShortPublicKeyHash(salt, recipient), shortPublicKeyHash)) {
             System.out.println(format("%s was not the recipient.", recipient.getBase32SigningPublicKey()));
             return Optional.empty();
         }
 
-        byte[] encryptedMessage = Arrays.copyOfRange(message, 24, message.length);
+        byte[] encryptedMessage = Arrays.copyOfRange(message, 8, message.length);
         byte[] decryptedMessage;
 
         try {
             decryptedMessage = SodiumLibrary.cryptoBoxSealOpen(encryptedMessage, recipient.getDHPublicKey(), recipient.getDHPrivateKey().get());
         } catch (SodiumLibraryException e) {
             System.out.println(format("Short hash matched, but %s was not the intended recipient.", recipient.getBase32SigningPublicKey()));
+            return Optional.empty();
+        }
+
+        if(decryptedMessage.length < Key.BYTE_SIZE + SIGNATURE_SIZE + 32) {
+            System.out.println(format("Decrypted message was too short: %d < %d", decryptedMessage.length, Key.BYTE_SIZE + SIGNATURE_SIZE + 32));
             return Optional.empty();
         }
 
@@ -120,14 +128,15 @@ public class EncryptionService {
                 return Optional.empty();
             }
 
-            byte[] recipientPublicKeyHash = Arrays.copyOf(signedMessage, 16);
+            ByteArray recentMessageHash = new ByteArray(signedMessage, 16);
+            byte[] recipientPublicKeyHash = Arrays.copyOfRange(signedMessage, 16, 32);
 
             if(!Arrays.equals(getPublicKeyHash(recipient), recipientPublicKeyHash)) {
                 System.out.println(format("Signed message was not for recipient %s", recipient.getBase32SigningPublicKey()));
                 return Optional.empty();
             }
 
-            String messageStr = new String(signedMessage, 16, signedMessage.length - 16);
+            String messageStr = new String(signedMessage, 32, signedMessage.length - 32);
 
             return Optional.of(new DecryptedMessage(recentMessageHash, senderPublicKey, recipient, messageStr));
 
