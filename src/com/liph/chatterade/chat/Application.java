@@ -51,22 +51,23 @@ public class Application {
     private final EncryptionService encryptionService;
     private final ConnectionListener clientListener;
     private final ConnectionListener serverListener;
+    private final ConnectionListener clientTlsListener;
     private final Set<ServerConnection> serverConnections;
 
-    // TODO: keyed hash code to prevent DoS?
     private final Map<ByteArray, ClientUser> clientUsersByPublicKey;
 
     private final Map<ByteArray, RecentMessage> recentMessageSet;
     private final Deque<RecentMessage> recentMessageQueue;
 
 
-    public Application(String serverName, String serverVersion, int clientPort, int serverPort) {
+    public Application(String serverName, String serverVersion, int clientPort, int serverPort, int clientTlsPort) {
         this.startupTime = Instant.now();
         this.serverName = serverName;
         this.serverVersion = serverVersion;
         this.encryptionService = new EncryptionService();
-        this.clientListener = new ConnectionListener(this, clientPort, ClientConnection::new);
-        this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new);
+        this.clientListener = new ConnectionListener(this, clientPort, ClientConnection::new, false);
+        this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new, false);
+        this.clientTlsListener = new ConnectionListener(this, clientTlsPort, ClientConnection::new, true);
         this.serverConnections = ConcurrentHashMap.newKeySet();
         this.clientUsersByPublicKey = new ConcurrentHashMap<>();
         this.recentMessageSet = new HashMap<>();
@@ -77,6 +78,7 @@ public class Application {
         verifyCodeConsistency();
 
         new Thread(this.serverListener).start();
+        new Thread(this.clientTlsListener).start();
         this.clientListener.run();
     }
 

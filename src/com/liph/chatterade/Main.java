@@ -6,7 +6,7 @@ import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.Key;
 import com.muquit.libsodiumjna.SodiumKeyPair;
-import com.muquit.libsodiumjna.SodiumLibrary;
+import com.liph.chatterade.encryption.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,12 +17,16 @@ public class Main {
     public static void main(String[] args) {
         int clientPort = 6667;
         int serverPort = 6668;
+        int clientTlsPort = 7000;
 
         if(args.length >= 1)
             clientPort = Integer.parseInt(args[0]);
 
         if(args.length >= 2)
             serverPort = Integer.parseInt(args[1]);
+
+        if(args.length >= 3)
+            clientTlsPort = Integer.parseInt(args[2]);
 
         /*
         try {
@@ -45,7 +49,7 @@ public class Main {
         int serverPort = clientPort + 1;
         */
 
-        Application application = new Application("alipha.ddns.net", "0.1", clientPort, serverPort);
+        Application application = new Application("alipha.ddns.net", "0.1", clientPort, serverPort, clientTlsPort);
         application.run();
     }
 

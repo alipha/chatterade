@@ -5,7 +5,7 @@ import static java.lang.String.format;
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.encryption.models.Key;
-import com.muquit.libsodiumjna.SodiumLibrary;
+import com.liph.chatterade.encryption.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import com.sun.jna.Platform;
 import java.util.Arrays;
@@ -52,7 +52,7 @@ public class EncryptionService {
 
     public ByteArray getMessageHash(byte[] message) {
         try {
-            return new ByteArray(SodiumLibrary.cryptoGenerichash(message, 16));
+            return new ByteArray(SodiumLibrary.cryptoGenerichash(message, 16, null));
         } catch (SodiumLibraryException e) {
             throw new RuntimeException(e);
         }
@@ -61,7 +61,7 @@ public class EncryptionService {
 
     public int getHashCode(byte[] bytes) {
         try {
-            byte[] hash = SodiumLibrary.cryptoGenerichash(concat(hashCodeSalt, bytes), 16);
+            byte[] hash = SodiumLibrary.cryptoGenerichash(bytes, 32, hashCodeSalt);
             return (hash[0] & 0xff) | ((hash[1] & 0xff) << 8) | ((hash[2] & 0xff) << 16) | ((hash[3] & 0xff) << 24);
         } catch (SodiumLibraryException e) {
             throw new RuntimeException(e);
@@ -97,7 +97,7 @@ public class EncryptionService {
         byte[] shortPublicKeyHash = Arrays.copyOfRange(message, 4, 8);
 
         if(!Arrays.equals(getShortPublicKeyHash(salt, recipient), shortPublicKeyHash)) {
-            System.out.println(format("%s was not the recipient.", recipient.getBase32SigningPublicKey()));
+            //System.out.println(format("%s was not the recipient.", recipient.getBase32SigningPublicKey()));
             return Optional.empty();
         }
 
@@ -149,7 +149,7 @@ public class EncryptionService {
 
     public byte[] getPublicKeyHash(Key key) {
         try {
-            return SodiumLibrary.cryptoGenerichash(key.getSigningPublicKey().getBytes(), 16);
+            return SodiumLibrary.cryptoGenerichash(key.getSigningPublicKey().getBytes(), 16, null);
         } catch (SodiumLibraryException e) {
             throw new RuntimeException(e);
         }
@@ -158,7 +158,7 @@ public class EncryptionService {
 
     public byte[] getShortPublicKeyHash(byte[] salt, Key key) {
         try {
-            return Arrays.copyOf(SodiumLibrary.cryptoGenerichash(concat(salt, key.getSigningPublicKey().getBytes()), 16), 4);
+            return Arrays.copyOf(SodiumLibrary.cryptoGenerichash(key.getSigningPublicKey().getBytes(), 16, salt), 4);
         } catch (SodiumLibraryException e) {
             throw new RuntimeException(e);
         }

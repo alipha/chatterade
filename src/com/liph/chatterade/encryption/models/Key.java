@@ -3,7 +3,7 @@ package com.liph.chatterade.encryption.models;
 import com.liph.chatterade.common.Base32Encoder;
 import com.liph.chatterade.common.ByteArray;
 import com.muquit.libsodiumjna.SodiumKeyPair;
-import com.muquit.libsodiumjna.SodiumLibrary;
+import com.liph.chatterade.encryption.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import java.util.Optional;
 

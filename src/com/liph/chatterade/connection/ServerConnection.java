@@ -65,12 +65,14 @@ public class ServerConnection extends Connection {
 
 
     public void sendMessage(byte[] message) {
-        try {
-            writer.writeShort(message.length);
-            writer.write(message);
-            writer.flush();
-        } catch(IOException e) {
-            throw new RuntimeException(e);
+        synchronized (writer) {
+            try {
+                writer.writeShort(message.length);
+                writer.write(message);
+                writer.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

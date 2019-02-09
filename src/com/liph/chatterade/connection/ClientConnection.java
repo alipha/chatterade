@@ -99,9 +99,11 @@ public class ClientConnection extends Connection {
 
     public void sendMessage(String message) {
         System.out.println(format("%s <- %s", user.flatMap(User::getNick).orElse("unknown"), message));
-        writer.write(message);
-        writer.write("\r\n");
-        writer.flush();
+        synchronized (writer) {
+            writer.write(message);
+            writer.write("\r\n");
+            writer.flush();
+        }
     }
 
     public void sendMessage(String sender, String messageType, String message) {
