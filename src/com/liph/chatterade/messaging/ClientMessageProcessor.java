@@ -1,8 +1,9 @@
-package com.liph.chatterade.chat;
+package com.liph.chatterade.messaging;
 
 
 import static java.lang.String.format;
 
+import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.connection.ServerConnection;

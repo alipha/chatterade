@@ -3,10 +3,10 @@ package com.liph.chatterade;
 import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
-import com.liph.chatterade.chat.ClientMessageProcessor;
+import com.liph.chatterade.messaging.ClientMessageProcessor;
 import com.liph.chatterade.chat.ClientUserManager;
-import com.liph.chatterade.chat.RecentMessageManager;
-import com.liph.chatterade.chat.ServerMessageProcessor;
+import com.liph.chatterade.messaging.RecentMessageManager;
+import com.liph.chatterade.messaging.ServerMessageProcessor;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
@@ -15,9 +15,6 @@ import com.liph.chatterade.encryption.models.Key;
 import com.muquit.libsodiumjna.SodiumKeyPair;
 import com.liph.chatterade.encryption.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
 

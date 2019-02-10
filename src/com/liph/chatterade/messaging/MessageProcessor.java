@@ -1,4 +1,4 @@
-package com.liph.chatterade.chat;
+package com.liph.chatterade.messaging;
 
 
 import com.liph.chatterade.messaging.models.ConnectMessage;

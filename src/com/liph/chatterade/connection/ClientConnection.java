@@ -4,7 +4,7 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
-import com.liph.chatterade.chat.enums.MessageProcessMap;
+import com.liph.chatterade.messaging.enums.MessageActionMap;
 import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.connection.exceptions.ConnectionClosedException;
 import com.liph.chatterade.messaging.models.Message;
@@ -75,7 +75,7 @@ public class ClientConnection extends Connection {
         while(true) {
             message = readMessage();
             message.setSender(user.get());
-            MessageProcessMap.process(application.getClientMessageProcessor(), message);
+            MessageActionMap.process(application.getClientMessageProcessor(), message);
         }
     }
 

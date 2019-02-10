@@ -1,15 +1,15 @@
-package com.liph.chatterade.chat.enums;
+package com.liph.chatterade.messaging.enums;
 
 import static java.lang.String.format;
 
-import com.liph.chatterade.chat.MessageProcessor;
+import com.liph.chatterade.messaging.MessageProcessor;
 import com.liph.chatterade.common.EnumHelper;
 import com.liph.chatterade.messaging.models.Message;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
 
-public enum MessageProcessMap {
+public enum MessageActionMap {
     JOIN   (wrap(MessageProcessor::processJoin)),
     NICK   (wrap(MessageProcessor::processNick)),
     NOTICE (wrap(MessageProcessor::processNotice)),
@@ -26,19 +26,19 @@ public enum MessageProcessMap {
     private BiConsumer<MessageProcessor, Message> consumer;
     
     
-    MessageProcessMap(BiConsumer<MessageProcessor, Message> consumer) {
+    MessageActionMap(BiConsumer<MessageProcessor, Message> consumer) {
         this.consumer = consumer;
     }
     
     
     public static void process(MessageProcessor processor, Message message) {
-        MessageProcessMap messageAction = fromName(message.getType().name())
-            .orElseThrow(() -> new IllegalStateException(format("%s is missing in MessageProcessMap.", message.getType().name())));
+        MessageActionMap messageAction = fromName(message.getType().name())
+            .orElseThrow(() -> new IllegalStateException(format("%s is missing in MessageActionMap.", message.getType().name())));
 
         messageAction.consumer.accept(processor, message);
     }
 
-    public static Optional<MessageProcessMap> fromName(String name) {
+    public static Optional<MessageActionMap> fromName(String name) {
         return EnumHelper.fromName(values(), name);
     }
 

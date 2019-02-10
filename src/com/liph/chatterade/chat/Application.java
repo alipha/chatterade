@@ -3,16 +3,13 @@ package com.liph.chatterade.chat;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
-import com.liph.chatterade.chat.enums.MessageProcessMap;
-import com.liph.chatterade.chat.models.Channel;
+import com.liph.chatterade.messaging.ClientMessageProcessor;
+import com.liph.chatterade.messaging.RecentMessageManager;
+import com.liph.chatterade.messaging.ServerMessageProcessor;
+import com.liph.chatterade.messaging.enums.MessageActionMap;
 import com.liph.chatterade.chat.models.ClientUser;
-import com.liph.chatterade.chat.models.Contact;
-import com.liph.chatterade.chat.models.Server;
 import com.liph.chatterade.chat.models.User;
-import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.common.EnumHelper;
-import com.liph.chatterade.common.Pair;
-import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.connection.models.RecentMessage;
@@ -20,22 +17,10 @@ import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.messaging.enums.MessageType;
-import com.liph.chatterade.messaging.enums.TargetType;
-import com.liph.chatterade.messaging.models.*;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
-import com.liph.chatterade.parsing.models.Target;
-import java.io.IOException;
-import java.net.Socket;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -166,7 +151,7 @@ public class Application {
 
 
     private void verifyCodeConsistency() {
-        verifyEnumConsistency(MessageProcessMap.class, MessageProcessMap.values());
+        verifyEnumConsistency(MessageActionMap.class, MessageActionMap.values());
         verifyEnumConsistency(IrcMessageValidationMap.class, IrcMessageValidationMap.values());
     }
 

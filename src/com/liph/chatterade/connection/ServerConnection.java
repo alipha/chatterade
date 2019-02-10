@@ -1,7 +1,7 @@
 package com.liph.chatterade.connection;
 
 import com.liph.chatterade.chat.Application;
-import com.liph.chatterade.chat.enums.MessageProcessMap;
+import com.liph.chatterade.messaging.enums.MessageActionMap;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.parsing.IrcParser;
@@ -41,7 +41,7 @@ public class ServerConnection extends Connection {
         while(true) {
             message = readMessage();
             message.setSender(ircParser.parseSender(message.getTokenizedMessage().getSenderName()).get());  // TODO: sender for server messages?
-            MessageProcessMap.process(application.getServerMessageProcessor(), message);
+            MessageActionMap.process(application.getServerMessageProcessor(), message);
             // TODO: add logic to pass along message to other servers
         }
     }
