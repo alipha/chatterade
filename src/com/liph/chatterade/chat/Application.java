@@ -27,6 +27,7 @@ import com.liph.chatterade.parsing.models.Target;
 import java.io.IOException;
 import java.net.Socket;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,44 +43,51 @@ import java.util.stream.Stream;
 
 public class Application {
 
-    private static final int RECENT_MESSAGE_SET_MAX_SIZE = 10000;
-    private static final int RECENT_MESSAGE_MAX_AGE_MS = 1000 * 60;
-
     private final Instant startupTime;
     private final String serverName;
     private final String serverVersion;
+
     private final EncryptionService encryptionService;
-    private final ConnectionListener clientListener;
-    private final ConnectionListener serverListener;
-    private final ConnectionListener clientTlsListener;
     private final Set<ServerConnection> serverConnections;
 
-    private final Map<ByteArray, ClientUser> clientUsersByPublicKey;
+    private RecentMessageManager recentMessageManager;
+    private ClientUserManager clientUserManager;
+    private ClientMessageProcessor clientMessageProcessor;
+    private ServerMessageProcessor serverMessageProcessor;
 
-    private final Map<ByteArray, RecentMessage> recentMessageSet;
-    private final Deque<RecentMessage> recentMessageQueue;
 
-
-    public Application(String serverName, String serverVersion, int clientPort, int serverPort, int clientTlsPort) {
+    public Application(String serverName, String serverVersion, EncryptionService encryptionService) {
         this.startupTime = Instant.now();
         this.serverName = serverName;
         this.serverVersion = serverVersion;
-        this.encryptionService = new EncryptionService();
-        this.clientListener = new ConnectionListener(this, clientPort, ClientConnection::new, false);
-        this.serverListener = new ConnectionListener(this, serverPort, ServerConnection::new, false);
-        this.clientTlsListener = new ConnectionListener(this, clientTlsPort, ClientConnection::new, true);
+
+        this.encryptionService = encryptionService;
         this.serverConnections = ConcurrentHashMap.newKeySet();
-        this.clientUsersByPublicKey = new ConcurrentHashMap<>();
-        this.recentMessageSet = new HashMap<>();
-        this.recentMessageQueue = new LinkedList<>();
     }
 
-    public void run() {
+
+    public void run(RecentMessageManager recentMessageManager, ClientUserManager clientUserManager,
+                    ClientMessageProcessor clientMessageProcessor, ServerMessageProcessor serverMessageProcessor,
+                    List<ConnectionListener> connectionListeners) {
         verifyCodeConsistency();
 
-        new Thread(this.serverListener).start();
-        new Thread(this.clientTlsListener).start();
-        this.clientListener.run();
+        this.recentMessageManager = recentMessageManager;
+        this.clientUserManager = clientUserManager;
+        this.clientMessageProcessor = clientMessageProcessor;
+        this.serverMessageProcessor = serverMessageProcessor;
+
+        List<Thread> listenerThreads = connectionListeners.stream().map(Thread::new).collect(toList());
+
+        for(Thread thread : listenerThreads)
+            thread.start();
+
+        for(Thread thread : listenerThreads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 
@@ -87,125 +95,35 @@ public class Application {
         return serverName;
     }
 
+    public Instant getStartupTime() {
+        return startupTime;
+    }
+
+    public String getServerVersion() {
+        return serverVersion;
+    }
+
+    public RecentMessageManager getRecentMessageManager() {
+        return recentMessageManager;
+    }
+
+    public ClientUserManager getClientUserManager() {
+        return clientUserManager;
+    }
+
+    public ClientMessageProcessor getClientMessageProcessor() {
+        return clientMessageProcessor;
+    }
+
+    public ServerMessageProcessor getServerMessageProcessor() {
+        return serverMessageProcessor;
+    }
+
 
     public void removeServer(ServerConnection server) {
         serverConnections.remove(server);
     }
 
-
-    public ClientUser addUser(ClientUser user) {
-        Key key = encryptionService.generateKey();
-        user.setKey(Optional.of(key));
-
-        clientUsersByPublicKey.put(key.getSigningPublicKey(), user);
-
-        sendWelcomeMessage(user.getConnection(), key.getBase32SigningPublicKey(), user);
-        return user;
-    }
-
-    public void removeUser(ClientUser clientUser) {
-        /*
-        Set<Channel> channels = clientUser.getChannels();
-        for(Channel channel : channels) {
-            channel.getUsers().remove(clientUser);
-        }
-        */
-
-        clientUser.getKey().ifPresent(k -> clientUsersByPublicKey.remove(k.getSigningPublicKey()));
-    }
-    
-    
-    public void processJoin(JoinMessage message) {
-    /*    ClientUser user = message.getSender();
-
-        for(Entry<String, Optional<String>> channelKey : message.getChannelKeyMap().entrySet()) {
-            Channel channel = new Channel(channelKey.getKey(), channelKey.getValue());
-            if(!channels.add(channel))
-                channel = channels;
-
-        }
-        */
-    }
-
-    public void processNick(NickMessage message) {
-        message.getSender().setNick(Optional.of(message.getNewNick()));
-    }
-
-    public void processNotice(NoticeMessage message) {
-
-    }
-
-    public void processPart(PartMessage message) {
-
-    }
-
-    public void processPass(PassMessage message) {
-
-    }
-
-    public void processPrivateMessage(PrivateMessage message) {
-        /*
-        Pair<Optional<ClientUser>, Optional<String>> targetAndPreviousNick = resolveTargetClientUser(message.getTarget(), message.getSender());
-        Optional<ClientUser> target = targetAndPreviousNick.getFirst();
-        Optional<String> previousNick = targetAndPreviousNick.getSecond();
-        */
-        Optional<ClientUser> senderClientUser = Optional.empty();
-
-        if(message.getSender() instanceof ClientUser) {
-           senderClientUser = Optional.of((ClientUser)message.getSender());
-        }
-
-        Optional<User> targetOpt = resolveTargetUser(message.getTarget(), senderClientUser);
-
-        if(targetOpt.isPresent()) {
-            User target = targetOpt.get();
-            
-            //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
-            String targetNick = target.getNick().orElse(target.getKey().get().getBase32SigningPublicKey());
-
-            if(!targetNick.equals(message.getTargetText())) {
-                senderClientUser.ifPresent(u -> sendNickChange(u, message.getTargetText(), target));
-            }
-
-            if(target instanceof ClientUser) {
-                ClientUser targetClientUser = (ClientUser)target;
-                Optional<String> previousNick = targetClientUser.addOrUpdateContact(message.getSender());
-                previousNick.ifPresent(previous -> sendNickChange(targetClientUser, previous, message.getSender()));
-
-                targetClientUser.getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
-            } else {
-                senderClientUser.ifPresent(u -> sendNetworkMessage(u, MessageType.PRIVMSG, target, format(":%s", message.getText())));
-            }
-        } else {
-            senderClientUser.ifPresent(u -> u.getConnection().sendMessage(serverName, "401", format("%s :No such nick/channel", message.getTargetText())));
-        }
-    }
-
-    public void processQuit(QuitMessage message) {
-
-    }
-
-    public void processUser(UserMessage message) {
-
-    }
-
-    public void processPing(PingMessage message) {
-        ((ClientUser)message.getSender()).getConnection().sendMessage(serverName, MessageType.PONG.getIrcCommand(), message.getText());
-    }
-
-    public void processPong(PongMessage message) {
-
-    }
-
-    public void processConnect(ConnectMessage message) {
-        try {
-            Socket socket = new Socket(message.getServer(), message.getPort().orElse(6667));
-            ServerConnection connection = new ServerConnection(this, socket);
-            new Thread(connection).start();
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-    }
 
     public void addServerConnection(ServerConnection server) {
         serverConnections.add(server);
@@ -216,7 +134,7 @@ public class Application {
     public boolean relayMessage(byte[] message, Optional<ServerConnection> originator) {
         RecentMessage recentMessage = new RecentMessage(encryptionService.getMessageHash(message));
 
-        if(!addToRecentMessages(recentMessage, originator))
+        if(!recentMessageManager.addToRecentMessages(recentMessage, originator))
             return false;
 
         for(ServerConnection connection : serverConnections) {
@@ -231,7 +149,7 @@ public class Application {
 
     public Optional<DecryptedMessage> decryptMessage(byte[] encryptedMessage) {
 
-        for(ClientUser user : clientUsersByPublicKey.values()) {
+        for(ClientUser user : clientUserManager.getUsers()) {
             Optional<DecryptedMessage> decryptedMessage = encryptionService.decryptMessage(user.getKey().get(), encryptedMessage);
             if(decryptedMessage.isPresent())
                 return decryptedMessage;
@@ -241,112 +159,11 @@ public class Application {
     }
 
 
-    private boolean addToRecentMessages(RecentMessage message, Optional<ServerConnection> originator) {
-        synchronized (recentMessageSet) {
-            while(recentMessageQueue.size() > RECENT_MESSAGE_SET_MAX_SIZE || (!recentMessageQueue.isEmpty() && recentMessageQueue.peekLast().getAgeMs() > RECENT_MESSAGE_MAX_AGE_MS)) {
-                RecentMessage evicted = recentMessageQueue.removeLast();
-                recentMessageSet.remove(evicted.getHash());
-            }
-
-            RecentMessage existingMessage = recentMessageSet.get(message.getHash());
-            if(existingMessage != null) {
-                originator.ifPresent(o -> existingMessage.getOriginators().add(o));
-                return false;
-            }
-
-            originator.ifPresent(o -> message.getOriginators().add(o));
-            recentMessageSet.put(message.getHash(), message);
-            recentMessageQueue.addFirst(message);
-            return true;
-        }
-    }
-
-
-    private ByteArray getMostRecentMessage() {
-        synchronized (recentMessageSet) {
-            if(recentMessageQueue.isEmpty()) {
-                // TODO: exception?
-                return new ByteArray(new byte[16]);
-            } else {
-                return recentMessageQueue.getFirst().getHash();
-            }
-        }
-    }
-
-
-    private void sendNetworkMessage(User sender, MessageType messageType, User target, String arguments) {
-        String targetPublicKey = target.getKey().get().getBase32SigningPublicKey();
-        String message = format(":%s %s %s %s", sender.getFullyQualifiedName(), messageType.getIrcCommand(), targetPublicKey, arguments);
-
-        byte[] encryptedMessage = encryptionService.encryptMessage(sender.getKey().get(), target.getKey().get(), getMostRecentMessage(), message);
-        relayMessage(encryptedMessage, Optional.empty());
-    }
-
-    private void sendNickChange(ClientUser user, String previousNick, User contact) {
+    public void sendNickChange(ClientUser user, String previousNick, User contact) {
         String publicKey = contact.getKey().map(Key::getBase32SigningPublicKey).orElse("unknown");
         user.getConnection().sendMessage(format(":%s!%s@%s NICK %s", previousNick, contact.getUsername().orElse("unknown"), publicKey, contact.getNick().get()));
     }
 
-    private Optional<User> resolveTargetUser(Target target, Optional<ClientUser> sender) {
-        if(target.getTargetType() != TargetType.USER)   // TODO: error?
-            return Optional.empty(); //Pair.of(Optional.empty(), Optional.empty());
-
-        Optional<User> targetRemoteUser = Optional.empty();
-        Optional<Contact> targetContact = Optional.empty();
-
-        if(target.getPublicKey().isPresent())
-            targetRemoteUser = Optional.of(new User(target.getNick(), Optional.empty(), target.getPublicKey().map(Key::new)));
-
-        Optional<ClientUser> targetClientUser = target.getPublicKeyBytes().flatMap(this::getClientUserByPublicKey);
-        System.out.println(format("%s isPresent=%b", target.getPublicKey().orElse("none"), targetClientUser.isPresent()));
-
-        if(sender.isPresent()) {
-            if (!targetClientUser.isPresent() && target.getNick().isPresent()) {
-                targetContact = sender.get().getContactByNick(target.getNick().get());
-                if (targetContact.isPresent()) {
-                    targetClientUser = getClientUserByContact(targetContact.get());
-                }
-            }
-
-            if(targetClientUser.isPresent())
-                sender.get().addOrUpdateContact(targetClientUser.get());
-            else if(targetRemoteUser.isPresent() && targetRemoteUser.get().getNick().isPresent())
-                sender.get().addOrUpdateContact(targetRemoteUser.get());
-        }
-
-        if(targetClientUser.isPresent())
-            return targetClientUser.map(u -> (User)u);
-        else if(targetContact.isPresent() && targetContact.get().getKey().isPresent())
-            return targetContact.map(u -> (User)u);
-        else
-            return targetRemoteUser;
-        //Optional<String> previousNick = targetClientUser.flatMap(c -> sender.addOrUpdateContact(c.getNick(), c.getKey()));
-        //return Pair.of(targetClientUser, previousNick);
-    }
-
-    private Optional<ClientUser> getClientUserByPublicKey(ByteArray publicKey) {
-        return Optional.ofNullable(clientUsersByPublicKey.get(publicKey));
-    }
-
-    private Optional<ClientUser> getClientUserByPublicKey(Key key) {
-        return getClientUserByPublicKey(key.getSigningPublicKey());
-    }
-
-    private Optional<ClientUser> getClientUserByContact(User user) {
-        return user.getKey().flatMap(this::getClientUserByPublicKey);
-    }
-
-
-    private void sendWelcomeMessage(ClientConnection connection, String keyBase32, ClientUser user) {
-        connection.sendMessage(serverName, "001", format(":Welcome to the Internet Relay Network %s", user.getFullyQualifiedName()));
-        connection.sendMessage(serverName, "002", format(":Your host is %s, running version %s", serverName, serverVersion));
-        connection.sendMessage(serverName, "003", format(":This server was created %s", startupTime));
-        connection.sendMessage(serverName, "004", format("%s %s DOQRSZaghilopswz CFILMPQSbcefgijklmnopqrstvz bkloveqjfI", serverName, serverVersion));
-        connection.sendMessage(serverName, "375", format(":- %s Message of the Day -", serverName));
-        connection.sendMessage(serverName, "372", "Welcome to my test chatterade server!");
-        connection.sendMessage(serverName, "376", ":End of /MOTD command.");
-        connection.sendMessage(serverName, "NOTICE", format(":Your public key is %s. Users need to /msg %s^%s to message you.", keyBase32, user.getNick().get(), keyBase32));
-    }
 
     private void verifyCodeConsistency() {
         verifyEnumConsistency(MessageProcessMap.class, MessageProcessMap.values());

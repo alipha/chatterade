@@ -69,13 +69,13 @@ public class ClientConnection extends Connection {
         user.get().setUsername(Optional.of(userMessage.getUsername()));
         user.get().setRealName(Optional.of(userMessage.getRealName()));
 
-        application.addUser(user.get());
+        application.getClientUserManager().addUser(user.get());
 
         // user is logged in, now perform message loop
         while(true) {
             message = readMessage();
             message.setSender(user.get());
-            MessageProcessMap.process(application, message);
+            MessageProcessMap.process(application.getClientMessageProcessor(), message);
         }
     }
 
@@ -93,7 +93,7 @@ public class ClientConnection extends Connection {
             e.printStackTrace();
         }
 
-        user.ifPresent(application::removeUser);
+        user.ifPresent(u -> application.getClientUserManager().removeUser(u));
     }
 
 

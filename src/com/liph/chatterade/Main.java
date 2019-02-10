@@ -3,6 +3,13 @@ package com.liph.chatterade;
 import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
+import com.liph.chatterade.chat.ClientMessageProcessor;
+import com.liph.chatterade.chat.ClientUserManager;
+import com.liph.chatterade.chat.RecentMessageManager;
+import com.liph.chatterade.chat.ServerMessageProcessor;
+import com.liph.chatterade.connection.ClientConnection;
+import com.liph.chatterade.connection.ConnectionListener;
+import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.Key;
 import com.muquit.libsodiumjna.SodiumKeyPair;
@@ -11,6 +18,8 @@ import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
 
 public class Main {
 
@@ -49,8 +58,20 @@ public class Main {
         int serverPort = clientPort + 1;
         */
 
-        Application application = new Application("alipha.ddns.net", "0.1", clientPort, serverPort, clientTlsPort);
-        application.run();
+        Application application = new Application("alipha.ddns.net", "0.1", EncryptionService.getInstance());
+
+        List<ConnectionListener> connectionListeners = Arrays.asList(
+            new ConnectionListener(application, clientPort, ClientConnection::new, false),
+            new ConnectionListener(application, serverPort, ServerConnection::new, false),
+            new ConnectionListener(application, clientTlsPort, ClientConnection::new, true)
+        );
+
+        application.run(
+            new RecentMessageManager(),
+            new ClientUserManager(application),
+            new ClientMessageProcessor(application),
+            new ServerMessageProcessor(application),
+            connectionListeners);
     }
 
 

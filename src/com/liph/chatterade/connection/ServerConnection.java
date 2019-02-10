@@ -41,7 +41,7 @@ public class ServerConnection extends Connection {
         while(true) {
             message = readMessage();
             message.setSender(ircParser.parseSender(message.getTokenizedMessage().getSenderName()).get());  // TODO: sender for server messages?
-            MessageProcessMap.process(application, message);
+            MessageProcessMap.process(application.getServerMessageProcessor(), message);
             // TODO: add logic to pass along message to other servers
         }
     }
