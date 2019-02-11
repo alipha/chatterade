@@ -1,7 +1,7 @@
 package com.liph.chatterade.encryption.models;
 
-
 import com.liph.chatterade.common.ByteArray;
+
 
 public class DecryptedMessage {
 

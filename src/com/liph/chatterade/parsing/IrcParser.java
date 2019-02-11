@@ -2,8 +2,6 @@ package com.liph.chatterade.parsing;
 
 import static java.util.stream.Collectors.toList;
 
-import com.liph.chatterade.chat.models.User;
-import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.encryption.models.PublicKey;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.messaging.enums.MessageType;
@@ -15,7 +13,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 

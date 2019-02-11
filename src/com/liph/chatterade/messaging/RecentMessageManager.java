@@ -1,6 +1,5 @@
 package com.liph.chatterade.messaging;
 
-
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.connection.models.RecentMessage;
@@ -9,6 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
+
 
 public class RecentMessageManager {
 

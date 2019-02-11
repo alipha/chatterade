@@ -4,16 +4,17 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
+import com.liph.chatterade.chat.models.Contact;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.messaging.enums.MessageActionMap;
-import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.connection.exceptions.ConnectionClosedException;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.messaging.models.NickMessage;
 import com.liph.chatterade.messaging.models.PassMessage;
 import com.liph.chatterade.messaging.models.UserMessage;
 import com.liph.chatterade.messaging.enums.MessageType;
+import com.liph.chatterade.parsing.IrcFormatter;
 import com.liph.chatterade.parsing.IrcParser;
 import com.liph.chatterade.parsing.exceptions.MalformedIrcMessageException;
 
@@ -28,6 +29,7 @@ import java.util.Optional;
 public class ClientConnection extends Connection {
 
     private final IrcParser ircParser;
+    private final IrcFormatter ircFormatter;
     private BufferedReader reader;
     private PrintWriter writer;
 
@@ -37,6 +39,7 @@ public class ClientConnection extends Connection {
     public ClientConnection(Application application, Socket socket) {
         super(application, socket);
         this.ircParser = new IrcParser();
+        this.ircFormatter = new IrcFormatter();
     }
 
     @Override
@@ -102,7 +105,7 @@ public class ClientConnection extends Connection {
 
 
     public void sendMessage(String message) {
-        System.out.println(format("%s <- %s", clientUser.flatMap(User::getNick).orElse("unknown"), message));
+        System.out.println(format("%s <- %s", clientUser.map(ClientUser::getNick).orElse("unknown"), message));
         synchronized (writer) {
             writer.write(message);
             writer.write("\r\n");
@@ -111,8 +114,12 @@ public class ClientConnection extends Connection {
     }
 
     public void sendMessage(String sender, String messageType, String message) {
-        String nick = clientUser.flatMap(ClientUser::getNick).orElse("*");
-        sendMessage(format(":%s %s %s %s", sender, messageType, nick, message));
+        String nick = clientUser.map(ClientUser::getNick).orElse("*");
+        sendMessage(ircFormatter.formatMessage(sender, messageType, nick, message));
+    }
+
+    public void sendMessage(Contact sender, String messageType, String message) {
+        sendMessage(ircFormatter.getFullyQualifiedName(sender), messageType, message);
     }
 
 
@@ -124,7 +131,7 @@ public class ClientConnection extends Connection {
                     line = reader.readLine();
                     if(line == null)
                         throw new ConnectionClosedException();
-                    System.out.println(format("%s -> %s", clientUser.flatMap(User::getNick).orElse("unknown"), line));
+                    System.out.println(format("%s -> %s", clientUser.map(ClientUser::getNick).orElse("unknown"), line));
                 } while(line.trim().equals(""));
 
                 return ircParser.parse(line, true);

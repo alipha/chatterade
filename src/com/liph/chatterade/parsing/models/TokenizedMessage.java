@@ -2,8 +2,6 @@ package com.liph.chatterade.parsing.models;
 
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.enums.TargetType;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 

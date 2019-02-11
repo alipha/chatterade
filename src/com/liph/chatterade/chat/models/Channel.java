@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class Channel {
 
     private final String name;
-    private final Set<User> users;
+    private final Set<Contact> users;
     private Optional<String> key = Optional.empty();
 
 
@@ -25,7 +25,7 @@ public class Channel {
     }
 
 
-    public Set<User> getUsers() {
+    public Set<Contact> getUsers() {
         return users;
     }
 

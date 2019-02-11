@@ -3,20 +3,20 @@ package com.liph.chatterade.chat;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
+import com.liph.chatterade.encryption.models.PublicKey;
 import com.liph.chatterade.messaging.ClientMessageProcessor;
 import com.liph.chatterade.messaging.RecentMessageManager;
 import com.liph.chatterade.messaging.ServerMessageProcessor;
 import com.liph.chatterade.messaging.enums.MessageActionMap;
 import com.liph.chatterade.chat.models.ClientUser;
-import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.common.EnumHelper;
 import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.connection.models.RecentMessage;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
-import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.messaging.enums.MessageType;
+import com.liph.chatterade.parsing.IrcFormatter;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
 import java.time.Instant;
 import java.util.List;
@@ -33,6 +33,7 @@ public class Application {
     private final String serverVersion;
 
     private final EncryptionService encryptionService;
+    private final IrcFormatter ircFormatter;
     private final Set<ServerConnection> serverConnections;
 
     private RecentMessageManager recentMessageManager;
@@ -41,12 +42,13 @@ public class Application {
     private ServerMessageProcessor serverMessageProcessor;
 
 
-    public Application(String serverName, String serverVersion, EncryptionService encryptionService) {
+    public Application(String serverName, String serverVersion, EncryptionService encryptionService, IrcFormatter ircFormatter) {
         this.startupTime = Instant.now();
         this.serverName = serverName;
         this.serverVersion = serverVersion;
 
         this.encryptionService = encryptionService;
+        this.ircFormatter = ircFormatter;
         this.serverConnections = ConcurrentHashMap.newKeySet();
     }
 
@@ -86,6 +88,10 @@ public class Application {
 
     public String getServerVersion() {
         return serverVersion;
+    }
+
+    public IrcFormatter getIrcFormatter() {
+        return ircFormatter;
     }
 
     public RecentMessageManager getRecentMessageManager() {
@@ -144,9 +150,10 @@ public class Application {
     }
 
 
-    public void sendNickChange(ClientUser user, String previousNick, User contact) {
-        String publicKey = contact.getPublicKey().map(Key::getBase32SigningKey).orElse("unknown");
-        user.getConnection().sendMessage(format(":%s!%s@%s NICK %s", previousNick, contact.getUsername().orElse("unknown"), publicKey, contact.getNick().get()));
+    public void sendNickChange(ClientUser user, String previousNick, PublicKey publicKey, String newNick) {
+        String sender = ircFormatter.getFullyQualifiedName(previousNick, "unknown", publicKey);
+        String message = ircFormatter.formatMessage(sender, "NICK", format(":%s", newNick));
+        user.getConnection().sendMessage(message);
     }
 
 

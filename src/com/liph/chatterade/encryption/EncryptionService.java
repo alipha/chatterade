@@ -2,11 +2,9 @@ package com.liph.chatterade.encryption;
 
 import static java.lang.String.format;
 
-import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.encryption.models.Key;
-import com.liph.chatterade.encryption.SodiumLibrary;
 import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.encryption.models.PublicKey;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;

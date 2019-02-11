@@ -6,9 +6,6 @@ import static java.lang.String.format;
 
 public class Base32Encoder {
 
-    private static final String BASE32_CHARS = "0123456789abdefghijklmnopqrstuvw";
-
-
     public static String getBase32(byte[] bytes) {
         StringBuilder builder = new StringBuilder();
         int currentDigit = 0;

@@ -13,6 +13,7 @@ import java.util.Optional;
 
 import static java.lang.String.format;
 
+
 public class ServerConnection extends Connection {
 
     private final IrcParser ircParser;

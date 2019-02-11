@@ -1,7 +1,5 @@
 package com.liph.chatterade.messaging.models;
 
-import com.liph.chatterade.chat.models.ClientUser;
-import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.parsing.models.TokenizedMessage;
 

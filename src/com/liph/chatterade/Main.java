@@ -12,12 +12,13 @@ import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.encryption.EncryptionService;
-import com.liph.chatterade.encryption.models.Key;
+import com.liph.chatterade.parsing.IrcFormatter;
 import com.muquit.libsodiumjna.SodiumKeyPair;
 import com.liph.chatterade.encryption.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import java.util.Arrays;
 import java.util.List;
+
 
 public class Main {
 
@@ -56,7 +57,7 @@ public class Main {
         int serverPort = clientPort + 1;
         */
 
-        Application application = new Application("alipha.ddns.net", "0.1", EncryptionService.getInstance());
+        Application application = new Application("alipha.ddns.net", "0.1", EncryptionService.getInstance(), new IrcFormatter());
 
         List<ConnectionListener> connectionListeners = Arrays.asList(
             new ConnectionListener(application, clientPort, ClientConnection::new, false),

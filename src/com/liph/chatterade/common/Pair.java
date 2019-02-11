@@ -1,6 +1,5 @@
 package com.liph.chatterade.common;
 
-
 import java.util.Objects;
 
 

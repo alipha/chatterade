@@ -1,11 +1,9 @@
 package com.liph.chatterade.messaging;
 
-
 import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
-import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.models.ConnectMessage;
@@ -83,15 +81,15 @@ public class ClientMessageProcessor implements MessageProcessor {
             String targetNick = target.getNick().orElse(target.getPublicKey().get().getBase32SigningKey());
 
             if(!targetNick.equals(message.getTargetText())) {
-                senderClientUser.ifPresent(u -> application.sendNickChange(u, message.getTargetText(), target));
+                senderClientUser.ifPresent(u -> application.sendNickChange(u, message.getTargetText(), target.getPublicKey(), targetNick));
             }
 
             if(target instanceof ClientUser) {
                 ClientUser targetClientUser = (ClientUser)target;
                 Optional<String> previousNick = targetClientUser.addOrUpdateContact(message.getSender());
-                previousNick.ifPresent(previous -> application.sendNickChange(targetClientUser, previous, message.getSender()));
+                previousNick.ifPresent(previous -> application.sendNickChange(targetClientUser, previous, message.getSender().getPublicKey(), message.getSender()));
 
-                targetClientUser.getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+                targetClientUser.getConnection().sendMessage(message.getSender(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
             } else {
                 senderClientUser.ifPresent(u -> application.getClientUserManager().sendNetworkMessage(u, MessageType.PRIVMSG, target, format(":%s", message.getText())));
             }
@@ -109,7 +107,8 @@ public class ClientMessageProcessor implements MessageProcessor {
     }
 
     public void processPing(PingMessage message) {
-        ((ClientUser)message.getSender()).getConnection().sendMessage(application.getServerName(), MessageType.PONG.getIrcCommand(), message.getText());
+        String formatted = application.getIrcFormatter().formatMessage(application.getServerName(), MessageType.PONG.getIrcCommand(), format(":%s", message.getText()));
+        ((ClientUser)message.getSender()).getConnection().sendMessage(formatted);
     }
 
     public void processPong(PongMessage message) {

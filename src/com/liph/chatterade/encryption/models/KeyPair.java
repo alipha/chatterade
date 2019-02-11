@@ -1,7 +1,7 @@
 package com.liph.chatterade.encryption.models;
 
-
 import com.muquit.libsodiumjna.SodiumKeyPair;
+
 
 public class KeyPair {
 

@@ -1,6 +1,5 @@
 package com.liph.chatterade.messaging;
 
-
 import com.liph.chatterade.messaging.models.ConnectMessage;
 import com.liph.chatterade.messaging.models.JoinMessage;
 import com.liph.chatterade.messaging.models.NickMessage;

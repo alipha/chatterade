@@ -4,7 +4,6 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
-import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.models.ConnectMessage;
 import com.liph.chatterade.messaging.models.JoinMessage;
@@ -78,9 +77,9 @@ public class ServerMessageProcessor implements MessageProcessor {
             if(target instanceof ClientUser) {
                 ClientUser targetClientUser = (ClientUser)target;
                 Optional<String> previousNick = targetClientUser.addOrUpdateContact(message.getSender());
-                previousNick.ifPresent(previous -> application.sendNickChange(targetClientUser, previous, message.getSender()));
+                previousNick.ifPresent(previous -> application.sendNickChange(targetClientUser, previous, message.getSender().getPublicKey(), message.getSender()));
 
-                targetClientUser.getConnection().sendMessage(message.getSender().getFullyQualifiedName(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+                targetClientUser.getConnection().sendMessage(message.getSender(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
             } else {
                 senderClientUser.ifPresent(u -> application.getClientUserManager().sendNetworkMessage(u, MessageType.PRIVMSG, target, format(":%s", message.getText())));
             }

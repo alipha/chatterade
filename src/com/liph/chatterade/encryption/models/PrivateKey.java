@@ -1,6 +1,5 @@
 package com.liph.chatterade.encryption.models;
 
-
 import com.liph.chatterade.encryption.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 

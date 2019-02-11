@@ -1,6 +1,5 @@
 package com.liph.chatterade.messaging.enums;
 
-
 import java.util.Arrays;
 import java.util.List;
 

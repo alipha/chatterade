@@ -4,21 +4,22 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.connection.ClientConnection;
-import com.liph.chatterade.encryption.models.Key;
-
 import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.encryption.models.PrivateKey;
 import com.liph.chatterade.encryption.models.PublicKey;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 
-public class ClientUser extends User {
+public class ClientUser {
 
     private final ClientConnection connection;
-    private PrivateKey privateKey;
+    private final KeyPair keyPair;
+
+    private String nick;
+    private Optional<String> username = Optional.empty();
+    private Optional<String> realName = Optional.empty();
 
     // TODO: keyed hash code to prevent DoS? Or limit the size of these Maps by removing unreplied-to contacts?
     private final Map<String, Contact> contactsByNick;
@@ -26,43 +27,69 @@ public class ClientUser extends User {
 
 
     public ClientUser(String nick, KeyPair keyPair, ClientConnection connection) {
-        super(nick, keyPair.getPublicKey());
+        this.nick = nick;
         this.connection = connection;
-        this.privateKey = keyPair.getPrivateKey();
+        this.keyPair = keyPair;
         this.contactsByNick = new HashMap<>();//new ConcurrentHashMap<>();
         this.contactsByPublicKey = new HashMap<>(); //new ConcurrentHashMap<>();
     }
 
 
+
+    public ClientConnection getConnection() {
+        return connection;
+    }
+
+
+    public String getNick() {
+        return nick;
+    }
+
+    public void setNick(String nick) {
+        this.nick = nick;
+    }
+
+    public Optional<String> getUsername() {
+        return username;
+    }
+
+    public void setUsername(Optional<String> username) {
+        this.username = username;
+    }
+
+    public Optional<String> getRealName() {
+        return realName;
+    }
+
+    public void setRealName(Optional<String> realName) {
+        this.realName = realName;
+    }
+
+
+    public PublicKey getPublicKey() {
+        return keyPair.getPublicKey();
+    }
+
     public PrivateKey getPrivateKey() {
-        return privateKey;
+        return keyPair.getPrivateKey();
     }
 
     public KeyPair getKeyPair() {
-        return new KeyPair(getPublicKey().get(), privateKey);
+        return keyPair;
     }
 
 
-    public Optional<String> addOrUpdateContact(User contact) {
+    public Optional<String> addOrUpdateContact(Contact contact) {
         return addOrUpdateContact(contact.getNick(), contact.getPublicKey());
     }
 
     // TODO: remove Optional<String> return?
-    public synchronized Optional<String> addOrUpdateContact(Optional<String> nick, Optional<PublicKey> publicKey) {
+    public synchronized Optional<String> addOrUpdateContact(Optional<String> nick, PublicKey publicKey) {
         Optional<Contact> contactByNick = nick.flatMap(this::getContactByNick);
-        Optional<Contact> contactByKey = publicKey.map(Key::getSigningKey).flatMap(this::getContactByPublicKey);
+        Optional<Contact> contactByKey = getContactByPublicKey(publicKey.getSigningKey());
 
-        if(!nick.isPresent() && !publicKey.isPresent())   // TODO: error?
-            return Optional.empty();
 
-        if(nick.isPresent() && !publicKey.isPresent()) {
-            if(!contactByNick.isPresent()) {
-                addContact(new Contact(nick, publicKey));
-            }
-            return Optional.empty();
-        }
-
-        if(!nick.isPresent() && publicKey.isPresent()) {
+        if(!nick.isPresent()) {
             if(!contactByKey.isPresent()) {
                 addContact(new Contact(nick, publicKey));
             }
@@ -82,13 +109,8 @@ public class ClientUser extends User {
             }
         } else {
             if(contactByNick.isPresent()) {
-                if(contactByNick.get().getPublicKey().isPresent()) {
-                    removeNick(contactByNick.get().getNick().get());    // TODO: override nick
-                    addContact(new Contact(nick, publicKey));
-                } else {
-                    contactByNick.get().setPublicKey(publicKey);
-                    addContact(contactByNick.get());
-                }
+                removeNick(contactByNick.get().getNick().get());    // TODO: override nick
+                addContact(new Contact(nick, publicKey));
             } else {
                 addContact(new Contact(nick, publicKey));
             }
@@ -100,7 +122,7 @@ public class ClientUser extends User {
 
     private synchronized void addContact(Contact user) {
         user.getNick().ifPresent(n -> contactsByNick.put(n.toLowerCase(), user));
-        user.getPublicKey().ifPresent(k -> contactsByPublicKey.put(k.getSigningKey(), user));
+        contactsByPublicKey.put(user.getPublicKey().getSigningKey(), user);
     }
 
     private synchronized Optional<String> renameNick(Optional<Contact> contact, Optional<String> nick) {
@@ -152,10 +174,5 @@ public class ClientUser extends User {
 
     public synchronized Optional<Contact> getContactByPublicKey(ByteArray key) {
         return Optional.ofNullable(contactsByPublicKey.get(key));
-    }
-
-
-    public ClientConnection getConnection() {
-        return connection;
     }
 }
