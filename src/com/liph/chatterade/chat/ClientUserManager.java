@@ -9,7 +9,8 @@ import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.encryption.EncryptionService;
-import com.liph.chatterade.encryption.models.Key;
+import com.liph.chatterade.encryption.models.KeyPair;
+import com.liph.chatterade.encryption.models.PublicKey;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.enums.TargetType;
 import com.liph.chatterade.parsing.models.Target;
@@ -37,12 +38,10 @@ public class ClientUserManager {
 
 
     public ClientUser addUser(ClientUser user) {
-        Key key = EncryptionService.getInstance().generateKey();
-        user.setKey(Optional.of(key));
 
-        clientUsersByPublicKey.put(key.getSigningPublicKey(), user);
+        clientUsersByPublicKey.put(user.getPublicKey().get().getSigningKey(), user);
 
-        sendWelcomeMessage(user.getConnection(), key.getBase32SigningPublicKey(), user);
+        sendWelcomeMessage(user.getConnection(), user.getPublicKey().get().getBase32SigningKey(), user);
         return user;
     }
 
@@ -54,7 +53,7 @@ public class ClientUserManager {
         }
         */
 
-        clientUser.getKey().ifPresent(k -> clientUsersByPublicKey.remove(k.getSigningPublicKey()));
+        clientUser.getPublicKey().ifPresent(k -> clientUsersByPublicKey.remove(k.getSigningKey()));
     }
 
 
@@ -66,7 +65,7 @@ public class ClientUserManager {
         Optional<Contact> targetContact = Optional.empty();
 
         if(target.getPublicKey().isPresent())
-            targetRemoteUser = Optional.of(new User(target.getNick(), Optional.empty(), target.getPublicKey().map(Key::new)));
+            targetRemoteUser = Optional.of(new User(target.getNick(), Optional.empty(), target.getPublicKey().map(PublicKey::new)));
 
         Optional<ClientUser> targetClientUser = target.getPublicKeyBytes().flatMap(this::getUserByPublicKey);
         System.out.println(format("%s isPresent=%b", target.getPublicKey().orElse("none"), targetClientUser.isPresent()));
@@ -87,7 +86,7 @@ public class ClientUserManager {
 
         if(targetClientUser.isPresent())
             return targetClientUser.map(u -> (User)u);
-        else if(targetContact.isPresent() && targetContact.get().getKey().isPresent())
+        else if(targetContact.isPresent() && targetContact.get().getPublicKey().isPresent())
             return targetContact.map(u -> (User)u);
         else
             return targetRemoteUser;
@@ -96,11 +95,11 @@ public class ClientUserManager {
     }
 
 
-    public void sendNetworkMessage(User sender, MessageType messageType, User target, String arguments) {
-        String targetPublicKey = target.getKey().get().getBase32SigningPublicKey();
+    public void sendNetworkMessage(ClientUser sender, MessageType messageType, User target, String arguments) {
+        String targetPublicKey = target.getPublicKey().get().getBase32SigningKey();
         String message = format(":%s %s %s %s", sender.getFullyQualifiedName(), messageType.getIrcCommand(), targetPublicKey, arguments);
 
-        byte[] encryptedMessage = EncryptionService.getInstance().encryptMessage(sender.getKey().get(), target.getKey().get(), application.getRecentMessageManager().getMostRecentMessage(), message);
+        byte[] encryptedMessage = EncryptionService.getInstance().encryptMessage(sender.getKeyPair(), target.getPublicKey().get(), application.getRecentMessageManager().getMostRecentMessage(), message);
         application.relayMessage(encryptedMessage, Optional.empty());
     }
 
@@ -122,11 +121,11 @@ public class ClientUserManager {
         return Optional.ofNullable(clientUsersByPublicKey.get(publicKey));
     }
 
-    private Optional<ClientUser> getUserByPublicKey(Key key) {
-        return getUserByPublicKey(key.getSigningPublicKey());
+    private Optional<ClientUser> getUserByPublicKey(PublicKey publicKey) {
+        return getUserByPublicKey(publicKey.getSigningKey());
     }
 
     private Optional<ClientUser> getUserByContact(User user) {
-        return user.getKey().flatMap(this::getUserByPublicKey);
+        return user.getPublicKey().flatMap(this::getUserByPublicKey);
     }
 }

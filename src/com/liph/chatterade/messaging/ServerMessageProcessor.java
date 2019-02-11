@@ -69,7 +69,7 @@ public class ServerMessageProcessor implements MessageProcessor {
             User target = targetOpt.get();
 
             //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
-            String targetNick = target.getNick().orElse(target.getKey().get().getBase32SigningPublicKey());
+            String targetNick = target.getNick().orElse(target.getPublicKey().get().getBase32SigningKey());
 
             if(!targetNick.equals(message.getTargetText())) {
                 senderClientUser.ifPresent(u -> application.sendNickChange(u, message.getTargetText(), target));

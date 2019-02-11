@@ -3,44 +3,49 @@ package com.liph.chatterade.chat.models;
 
 import static java.lang.String.format;
 
-import com.liph.chatterade.chat.enums.ChatEntityType;
 import com.liph.chatterade.encryption.models.Key;
+import com.liph.chatterade.encryption.models.PublicKey;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
-public class User extends ChatEntity {
 
+public class User {
+
+    private Optional<String> nick = Optional.empty();
     private Optional<String> username = Optional.empty();
     private Optional<String> realName = Optional.empty();
-    private Optional<Key> key = Optional.empty();
+    private Optional<PublicKey> publicKey = Optional.empty();
 
 
     public User() {}
 
     public User(String nick) {
-        super(nick);
+        this.nick = Optional.of(nick);
+    }
+
+    public User(String nick, PublicKey publicKey) {
+        this.nick = Optional.of(nick);
+        this.publicKey = Optional.of(publicKey);
     }
 
     public User(String nick, String username, String realName) {
-        super(nick);
+        this.nick = Optional.of(nick);
         this.username = Optional.of(username);
         this.realName = Optional.of(realName);
     }
 
-    public User(Optional<String> nick, Optional<String> username, Optional<Key> key) {
-        setNick(nick);
+    public User(Optional<String> nick, Optional<String> username, Optional<PublicKey> publicKey) {
+        this.nick = nick;
         this.username = username;
-        this.key = key;
+        this.publicKey = publicKey;
     }
 
 
     public Optional<String> getNick() {
-        return getName();
+        return nick;
     }
 
     public void setNick(Optional<String> nick) {
-        setName(nick);
+        this.nick = nick;
     }
 
 
@@ -60,23 +65,17 @@ public class User extends ChatEntity {
         this.realName = realName;
     }
 
-    public Optional<Key> getKey() {
-        return key;
+    public Optional<PublicKey> getPublicKey() {
+        return publicKey;
     }
 
-    public void setKey(Optional<Key> key) {
-        this.key = key;
+    public void setPublicKey(Optional<PublicKey> publicKey) {
+        this.publicKey = publicKey;
     }
 
 
     public String getFullyQualifiedName() {
-        String publicKey = getKey().map(Key::getBase32SigningPublicKey).orElse("unknown");
+        String publicKey = getPublicKey().map(Key::getBase32SigningKey).orElse("unknown");
         return format("%s!%s@%s", getNick().orElse("unknown"), getUsername().orElse("unknown"), publicKey);
-    }
-
-
-    @Override
-    public ChatEntityType getType() {
-        return ChatEntityType.USER;
     }
 }

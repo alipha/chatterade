@@ -4,6 +4,8 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
+import com.liph.chatterade.encryption.EncryptionService;
+import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.messaging.enums.MessageActionMap;
 import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.connection.exceptions.ConnectionClosedException;
@@ -29,7 +31,7 @@ public class ClientConnection extends Connection {
     private BufferedReader reader;
     private PrintWriter writer;
 
-    private Optional<ClientUser> user = Optional.empty();
+    private Optional<ClientUser> clientUser = Optional.empty();
 
 
     public ClientConnection(Application application, Socket socket) {
@@ -59,22 +61,24 @@ public class ClientConnection extends Connection {
         String nick = ((NickMessage)message).getNewNick();
 
 
-        user = Optional.of(new ClientUser(nick, this));
+        KeyPair keyPair = EncryptionService.getInstance().generateKeyPair();
+        ClientUser user = new ClientUser(nick, keyPair, this);
+        clientUser = Optional.of(user);
 
         // read until USER message is sent
         while(message.getType() != MessageType.USER) {
             message = readMessage();
         }
         UserMessage userMessage = (UserMessage)message;
-        user.get().setUsername(Optional.of(userMessage.getUsername()));
-        user.get().setRealName(Optional.of(userMessage.getRealName()));
+        user.setUsername(Optional.of(userMessage.getUsername()));
+        user.setRealName(Optional.of(userMessage.getRealName()));
 
-        application.getClientUserManager().addUser(user.get());
+        application.getClientUserManager().addUser(user);
 
         // user is logged in, now perform message loop
         while(true) {
             message = readMessage();
-            message.setSender(user.get());
+            message.setSender(user);
             MessageActionMap.process(application.getClientMessageProcessor(), message);
         }
     }
@@ -93,12 +97,12 @@ public class ClientConnection extends Connection {
             e.printStackTrace();
         }
 
-        user.ifPresent(u -> application.getClientUserManager().removeUser(u));
+        clientUser.ifPresent(u -> application.getClientUserManager().removeUser(u));
     }
 
 
     public void sendMessage(String message) {
-        System.out.println(format("%s <- %s", user.flatMap(User::getNick).orElse("unknown"), message));
+        System.out.println(format("%s <- %s", clientUser.flatMap(User::getNick).orElse("unknown"), message));
         synchronized (writer) {
             writer.write(message);
             writer.write("\r\n");
@@ -107,7 +111,7 @@ public class ClientConnection extends Connection {
     }
 
     public void sendMessage(String sender, String messageType, String message) {
-        String nick = user.flatMap(ClientUser::getNick).orElse("*");
+        String nick = clientUser.flatMap(ClientUser::getNick).orElse("*");
         sendMessage(format(":%s %s %s %s", sender, messageType, nick, message));
     }
 
@@ -120,7 +124,7 @@ public class ClientConnection extends Connection {
                     line = reader.readLine();
                     if(line == null)
                         throw new ConnectionClosedException();
-                    System.out.println(format("%s -> %s", user.flatMap(User::getNick).orElse("unknown"), line));
+                    System.out.println(format("%s -> %s", clientUser.flatMap(User::getNick).orElse("unknown"), line));
                 } while(line.trim().equals(""));
 
                 return ircParser.parse(line, true);

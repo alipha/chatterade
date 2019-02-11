@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toList;
 
 import com.liph.chatterade.chat.models.User;
 import com.liph.chatterade.encryption.models.Key;
+import com.liph.chatterade.encryption.models.PublicKey;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.enums.TargetType;
@@ -194,6 +195,6 @@ public class IrcParser {
         if(!senderText.isEmpty())
             nick = Optional.of(senderText);
 
-        return Optional.of(new User(nick, username, publicKey.map(Key::new)));
+        return Optional.of(new User(nick, username, publicKey.map(PublicKey::new)));
     }
 }

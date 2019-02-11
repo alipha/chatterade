@@ -135,7 +135,7 @@ public class Application {
     public Optional<DecryptedMessage> decryptMessage(byte[] encryptedMessage) {
 
         for(ClientUser user : clientUserManager.getUsers()) {
-            Optional<DecryptedMessage> decryptedMessage = encryptionService.decryptMessage(user.getKey().get(), encryptedMessage);
+            Optional<DecryptedMessage> decryptedMessage = encryptionService.decryptMessage(user.getKeyPair(), encryptedMessage);
             if(decryptedMessage.isPresent())
                 return decryptedMessage;
         }
@@ -145,7 +145,7 @@ public class Application {
 
 
     public void sendNickChange(ClientUser user, String previousNick, User contact) {
-        String publicKey = contact.getKey().map(Key::getBase32SigningPublicKey).orElse("unknown");
+        String publicKey = contact.getPublicKey().map(Key::getBase32SigningKey).orElse("unknown");
         user.getConnection().sendMessage(format(":%s!%s@%s NICK %s", previousNick, contact.getUsername().orElse("unknown"), publicKey, contact.getNick().get()));
     }
 

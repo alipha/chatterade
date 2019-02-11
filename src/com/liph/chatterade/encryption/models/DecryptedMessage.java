@@ -7,11 +7,11 @@ public class DecryptedMessage {
 
     private final ByteArray recentMessageHash;
     private final ByteArray senderPublicKey;
-    private final Key targetPublicKey;
+    private final PublicKey targetPublicKey;
     private final String message;
 
 
-    public DecryptedMessage(ByteArray recentMessageHash, ByteArray senderPublicKey, Key targetPublicKey, String message) {
+    public DecryptedMessage(ByteArray recentMessageHash, ByteArray senderPublicKey, PublicKey targetPublicKey, String message) {
         this.recentMessageHash = recentMessageHash;
         this.senderPublicKey = senderPublicKey;
         this.targetPublicKey = targetPublicKey;
@@ -27,7 +27,7 @@ public class DecryptedMessage {
         return senderPublicKey;
     }
 
-    public Key getTargetPublicKey() {
+    public PublicKey getTargetPublicKey() {
         return targetPublicKey;
     }
 

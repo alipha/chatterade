@@ -6,6 +6,8 @@ import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.encryption.models.Key;
+import com.liph.chatterade.encryption.models.KeyPair;
+import com.liph.chatterade.encryption.models.PublicKey;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -14,28 +16,28 @@ public class MessageEncryptionTest {
 
     @Test
     public void encryptionDecryptionTest() {
-        EncryptionService encryptionService = new EncryptionService();
+        EncryptionService encryptionService = EncryptionService.getInstance();
 
         ByteArray recentMessageHash = new ByteArray(new byte[] {123, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, -100});
-        Key sender = encryptionService.generateKey();
-        Key recipient = encryptionService.generateKey();
-        Key targetNoPrivateKey = new Key(recipient.getSigningPublicKey().getBytes());
+        KeyPair sender = encryptionService.generateKeyPair();
+        KeyPair recipient = encryptionService.generateKeyPair();
+        PublicKey targetPublicKey = new PublicKey(recipient.getPublicKey().getSigningKey().getBytes());
         String message = "PRIVMSG Bob :testing";
 
-        assertEquals(recipient.getSigningPublicKey(), targetNoPrivateKey.getSigningPublicKey());
+        assertEquals(recipient.getPublicKey().getSigningKey(), targetPublicKey.getSigningKey());
 
-        byte[] encryptedMessage = encryptionService.encryptMessage(sender, targetNoPrivateKey, recentMessageHash, message);
+        byte[] encryptedMessage = encryptionService.encryptMessage(sender, targetPublicKey, recentMessageHash, message);
         Optional<DecryptedMessage> decryptedMessage = encryptionService.decryptMessage(recipient, encryptedMessage);
 
         // expected path test
         assertTrue(decryptedMessage.isPresent());
         assertEquals(recentMessageHash, decryptedMessage.get().getRecentMessageHash());
-        assertEquals(sender.getSigningPublicKey(), decryptedMessage.get().getSenderPublicKey());
-        assertEquals(recipient, decryptedMessage.get().getTargetPublicKey());
+        assertEquals(sender.getPublicKey().getSigningKey(), decryptedMessage.get().getSenderPublicKey());
+        assertEquals(recipient.getPublicKey(), decryptedMessage.get().getTargetPublicKey());
         assertEquals(message, decryptedMessage.get().getMessage());
 
         // another user can't decrypt
-        Key nonRecipient = encryptionService.generateKey();
+        KeyPair nonRecipient = encryptionService.generateKeyPair();
         decryptedMessage = encryptionService.decryptMessage(nonRecipient, encryptedMessage);
 
         assertFalse(decryptedMessage.isPresent());

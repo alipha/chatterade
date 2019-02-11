@@ -1,21 +1,32 @@
 package com.liph.chatterade.chat.models;
 
 
-import com.liph.chatterade.chat.enums.ChatEntityType;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Channel extends ChatEntity {
 
-    private Optional<String> key = Optional.empty();
+public class Channel {
+
+    private final String name;
     private final Set<User> users;
+    private Optional<String> key = Optional.empty();
 
 
     public Channel(String name, Optional<String> key) {
-        super(name);
+        this.name = name;
         this.key = key;
         this.users = ConcurrentHashMap.newKeySet();
+    }
+
+
+    public String getName() {
+        return name;
+    }
+
+
+    public Set<User> getUsers() {
+        return users;
     }
 
 
@@ -25,15 +36,5 @@ public class Channel extends ChatEntity {
 
     public void setKey(Optional<String> key) {
         this.key = key;
-    }
-
-
-    public Set<User> getUsers() {
-        return users;
-    }
-
-    @Override
-    public ChatEntityType getType() {
-        return ChatEntityType.CHANNEL;
     }
 }

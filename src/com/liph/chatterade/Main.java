@@ -3,6 +3,7 @@ package com.liph.chatterade;
 import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
+import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.messaging.ClientMessageProcessor;
 import com.liph.chatterade.chat.ClientUserManager;
 import com.liph.chatterade.messaging.RecentMessageManager;
@@ -73,7 +74,7 @@ public class Main {
 
 
     public static void timing() throws SodiumLibraryException {
-        EncryptionService encryptionService = new EncryptionService();
+        EncryptionService encryptionService = EncryptionService.getInstance();
 
         SodiumKeyPair key = SodiumLibrary.cryptoBoxKeyPair();
         byte[] ciphertext = SodiumLibrary.cryptoBoxSeal("test".getBytes(), key.getPublicKey());
@@ -101,11 +102,11 @@ public class Main {
         System.out.println(format("Failed decrypts: %d/sec", countPerSec));
 
 
-        Key key2 = new Key(key);
+        KeyPair key2 = new KeyPair(key);
         byte[] salt = {32, 89, -42, 120};
         start = System.currentTimeMillis();
         for(int i = 0; i < 200000; i++) {
-            encryptionService.getShortPublicKeyHash(salt, key2);
+            encryptionService.getShortPublicKeyHash(salt, key2.getPublicKey());
         }
         end = System.currentTimeMillis();
 
