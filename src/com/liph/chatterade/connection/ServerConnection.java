@@ -1,6 +1,7 @@
 package com.liph.chatterade.connection;
 
 import com.liph.chatterade.chat.Application;
+import com.liph.chatterade.chat.models.Contact;
 import com.liph.chatterade.messaging.enums.MessageActionMap;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.messaging.models.Message;
@@ -37,13 +38,12 @@ public class ServerConnection extends Connection {
 
         application.addServerConnection(this);
 
-        Message message;
-
         while(true) {
-            message = readMessage();
-            message.setSender(ircParser.parseSender(message.getTokenizedMessage().getSenderName()).get());  // TODO: sender for server messages?
-            MessageActionMap.process(application.getServerMessageProcessor(), message);
-            // TODO: add logic to pass along message to other servers
+            DecryptedMessage message = readMessage();
+            Message parsedMessage = ircParser.parse(message.getMessage(), false);
+
+            Optional<Contact> sender = ircParser.parseSender(parsedMessage.getTokenizedMessage().getSenderName(), message.getSenderPublicKey());
+            sender.ifPresent(s -> MessageActionMap.process(application.getServerMessageProcessor(), parsedMessage, s, message.getRecipient()));
         }
     }
 
@@ -78,7 +78,7 @@ public class ServerConnection extends Connection {
     }
 
 
-    private Message readMessage() throws IOException {
+    private DecryptedMessage readMessage() throws IOException {
         while(true) {
             try {
                 short length = reader.readShort();
@@ -93,7 +93,8 @@ public class ServerConnection extends Connection {
                 // TODO: validate recent message hash before processing
 
                 if(message.isPresent())
-                    return ircParser.parse(message.get().getMessage(), false);
+                    return message.get();
+
             } catch (MalformedIrcMessageException e) {
                 e.printStackTrace();
             }

@@ -11,6 +11,10 @@ public abstract class Key {
     private final ByteArray keyBytes;
 
 
+    public Key(ByteArray keyBytes) {
+        this.keyBytes = keyBytes;
+    }
+
     public Key(byte[] keyBytes) {
         this.keyBytes = new ByteArray(keyBytes);
     }

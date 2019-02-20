@@ -1,5 +1,7 @@
 package com.liph.chatterade.parsing.models;
 
+import static java.lang.String.format;
+
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.messaging.enums.TargetType;
 import java.util.Optional;
@@ -39,5 +41,14 @@ public class Target {
 
     public Optional<ByteArray> getPublicKeyBytes() {
         return publicKey.map(ByteArray::new);
+    }
+
+
+    @Override
+    public String toString() {
+        return format("Target { type='%s', value='%s', publicKey='%s' }",
+            targetType.toString(),
+            nick.orElse(channel.orElse("unknown")),
+            publicKey.orElse("none"));
     }
 }

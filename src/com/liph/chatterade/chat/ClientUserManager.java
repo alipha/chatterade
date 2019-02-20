@@ -5,6 +5,7 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.Contact;
+import com.liph.chatterade.chat.models.ResolveTargetResult;
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.encryption.EncryptionService;
@@ -57,15 +58,15 @@ public class ClientUserManager {
     }
 
 
-    public Optional<User> resolveTargetUser(Target target, Optional<ClientUser> sender) {
+    public ResolveTargetResult resolveTargetUser(Target target, Optional<ClientUser> sender) {
         if(target.getTargetType() != TargetType.USER)   // TODO: error?
-            return Optional.empty(); //Pair.of(Optional.empty(), Optional.empty());
+            return new ResolveTargetResult();
 
-        Optional<User> targetRemoteUser = Optional.empty();
+        Optional<Contact> targetRemoteUser = Optional.empty();
         Optional<Contact> targetContact = Optional.empty();
 
         if(target.getPublicKey().isPresent())
-            targetRemoteUser = Optional.of(new User(target.getNick(), Optional.empty(), target.getPublicKey().map(PublicKey::new)));
+            targetRemoteUser = Optional.of(new Contact(target.getNick(), target.getPublicKey().map(PublicKey::new).get()));
 
         Optional<ClientUser> targetClientUser = target.getPublicKeyBytes().flatMap(this::getUserByPublicKey);
         System.out.println(format("%s isPresent=%b", target.getPublicKey().orElse("none"), targetClientUser.isPresent()));
@@ -79,17 +80,17 @@ public class ClientUserManager {
             }
 
             if(targetClientUser.isPresent())
-                sender.get().addOrUpdateContact(targetClientUser.get());
+                sender.get().addOrUpdateContact(targetClientUser.get().asContact());
             else if(targetRemoteUser.isPresent() && targetRemoteUser.get().getNick().isPresent())
                 sender.get().addOrUpdateContact(targetRemoteUser.get());
         }
 
         if(targetClientUser.isPresent())
-            return targetClientUser.map(u -> (User)u);
-        else if(targetContact.isPresent() && targetContact.get().getPublicKey().isPresent())
-            return targetContact.map(u -> (User)u);
+            return new ResolveTargetResult(Optional.empty(), targetClientUser);
+        else if(targetContact.isPresent())
+            return new ResolveTargetResult(targetContact, Optional.empty());
         else
-            return targetRemoteUser;
+            return new ResolveTargetResult(targetRemoteUser, Optional.empty());
         //Optional<String> previousNick = targetClientUser.flatMap(c -> sender.addOrUpdateContact(c.getNick(), c.getKey()));
         //return Pair.of(targetClientUser, previousNick);
     }

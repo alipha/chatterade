@@ -1,5 +1,6 @@
 package com.liph.chatterade.encryption.models;
 
+import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.common.ByteArray;
 
 
@@ -7,14 +8,14 @@ public class DecryptedMessage {
 
     private final ByteArray recentMessageHash;
     private final ByteArray senderPublicKey;
-    private final PublicKey targetPublicKey;
+    private final ClientUser recipient;
     private final String message;
 
 
-    public DecryptedMessage(ByteArray recentMessageHash, ByteArray senderPublicKey, PublicKey targetPublicKey, String message) {
+    public DecryptedMessage(ByteArray recentMessageHash, ByteArray senderPublicKey, ClientUser recipient, String message) {
         this.recentMessageHash = recentMessageHash;
         this.senderPublicKey = senderPublicKey;
-        this.targetPublicKey = targetPublicKey;
+        this.recipient = recipient;
         this.message = message;
     }
 
@@ -27,8 +28,8 @@ public class DecryptedMessage {
         return senderPublicKey;
     }
 
-    public PublicKey getTargetPublicKey() {
-        return targetPublicKey;
+    public ClientUser getRecipient() {
+        return recipient;
     }
 
     public String getMessage() {

@@ -2,6 +2,7 @@ package com.liph.chatterade.encryption;
 
 import static java.lang.String.format;
 
+import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.encryption.models.Key;
@@ -88,7 +89,9 @@ public class EncryptionService {
     }
 
 
-    public Optional<DecryptedMessage> decryptMessage(KeyPair recipient, byte[] message) {
+    public Optional<DecryptedMessage> decryptMessage(ClientUser recipientUser, byte[] message) {
+        KeyPair recipientKey = recipientUser.getKeyPair();
+
         if(message.length < 8 + Key.BYTE_SIZE + SIGNATURE_SIZE + 32) {
             System.out.println(format("Message was too short: %d < %d", message.length, 8 + Key.BYTE_SIZE + SIGNATURE_SIZE + 32));
             return Optional.empty();
@@ -97,8 +100,8 @@ public class EncryptionService {
         byte[] salt = Arrays.copyOfRange(message, 0, 4);
         byte[] shortPublicKeyHash = Arrays.copyOfRange(message, 4, 8);
 
-        if(!Arrays.equals(getShortPublicKeyHash(salt, recipient.getPublicKey()), shortPublicKeyHash)) {
-            //System.out.println(format("%s was not the recipient.", recipient.getBase32SigningPublicKey()));
+        if(!Arrays.equals(getShortPublicKeyHash(salt, recipientKey.getPublicKey()), shortPublicKeyHash)) {
+            //System.out.println(format("%s was not the recipient.", recipientKey.getBase32SigningPublicKey()));
             return Optional.empty();
         }
 
@@ -106,9 +109,9 @@ public class EncryptionService {
         byte[] decryptedMessage;
 
         try {
-            decryptedMessage = SodiumLibrary.cryptoBoxSealOpen(encryptedMessage, recipient.getPublicKey().getEncryptionKey(), recipient.getPrivateKey().getEncryptionKey());
+            decryptedMessage = SodiumLibrary.cryptoBoxSealOpen(encryptedMessage, recipientKey.getPublicKey().getEncryptionKey(), recipientKey.getPrivateKey().getEncryptionKey());
         } catch (SodiumLibraryException e) {
-            System.out.println(format("Short hash matched, but %s was not the intended recipient.", recipient.getPublicKey().getBase32SigningKey()));
+            System.out.println(format("Short hash matched, but %s was not the intended recipient.", recipientKey.getPublicKey().getBase32SigningKey()));
             return Optional.empty();
         }
 
@@ -132,14 +135,14 @@ public class EncryptionService {
             ByteArray recentMessageHash = new ByteArray(signedMessage, 16);
             byte[] recipientPublicKeyHash = Arrays.copyOfRange(signedMessage, 16, 32);
 
-            if(!Arrays.equals(getPublicKeyHash(recipient.getPublicKey()), recipientPublicKeyHash)) {
-                System.out.println(format("Signed message was not for recipient %s", recipient.getPublicKey().getBase32SigningKey()));
+            if(!Arrays.equals(getPublicKeyHash(recipientKey.getPublicKey()), recipientPublicKeyHash)) {
+                System.out.println(format("Signed message was not for recipient %s", recipientKey.getPublicKey().getBase32SigningKey()));
                 return Optional.empty();
             }
 
             String messageStr = new String(signedMessage, 32, signedMessage.length - 32);
 
-            return Optional.of(new DecryptedMessage(recentMessageHash, senderPublicKey, recipient.getPublicKey(), messageStr));
+            return Optional.of(new DecryptedMessage(recentMessageHash, senderPublicKey, recipientUser, messageStr));
 
         } catch (SodiumLibraryException e) {
             e.printStackTrace();

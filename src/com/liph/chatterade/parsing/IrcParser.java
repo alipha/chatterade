@@ -2,6 +2,8 @@ package com.liph.chatterade.parsing;
 
 import static java.util.stream.Collectors.toList;
 
+import com.liph.chatterade.chat.models.Contact;
+import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.models.PublicKey;
 import com.liph.chatterade.messaging.models.Message;
 import com.liph.chatterade.messaging.enums.MessageType;
@@ -165,10 +167,9 @@ public class IrcParser {
     }
 
 
-    public Optional<User> parseSender(Optional<String> sender) {
+    public Optional<Contact> parseSender(Optional<String> sender, ByteArray publicKey) {
         Optional<String> nick = Optional.empty();
         Optional<String> username = Optional.empty();
-        Optional<String> publicKey = Optional.empty();
 
         if(!sender.isPresent() || sender.get().isEmpty())
             return Optional.empty();
@@ -178,7 +179,6 @@ public class IrcParser {
         int at = senderText.lastIndexOf('@');
 
         if(at > -1) {
-            publicKey = Optional.of(senderText.substring(at + 1));
             senderText = senderText.substring(0, at);
         }
 
@@ -192,6 +192,6 @@ public class IrcParser {
         if(!senderText.isEmpty())
             nick = Optional.of(senderText);
 
-        return Optional.of(new User(nick, username, publicKey.map(PublicKey::new)));
+        return Optional.of(new Contact(nick, username, new PublicKey(publicKey)));
     }
 }

@@ -1,10 +1,15 @@
 package com.liph.chatterade.encryption.models;
 
+import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.SodiumLibrary;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 
 
 public class PublicKey extends Key {
+
+    public PublicKey(ByteArray keyBytes) {
+        super(keyBytes);
+    }
 
     public PublicKey(byte[] keyBytes) {
         super(keyBytes);

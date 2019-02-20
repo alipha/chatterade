@@ -79,6 +79,11 @@ public class ClientUser {
     }
 
 
+    public Contact asContact() {
+        return new Contact(Optional.of(nick), getPublicKey());
+    }
+
+
     public Optional<String> addOrUpdateContact(Contact contact) {
         return addOrUpdateContact(contact.getNick(), contact.getPublicKey());
     }

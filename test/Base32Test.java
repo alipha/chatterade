@@ -19,6 +19,7 @@ public class Base32Test {
             byte[] actual = Base32Encoder.getBytes(base32);
             byte[] actualUpperCase = Base32Encoder.getBytes(base32.toUpperCase());
 
+            System.out.println(base32);
             assertValidChars(base32);
             assertTrue(Arrays.equals(expected, actual));
             assertTrue(Arrays.equals(expected, actualUpperCase));

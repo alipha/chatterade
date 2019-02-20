@@ -81,8 +81,7 @@ public class ClientConnection extends Connection {
         // user is logged in, now perform message loop
         while(true) {
             message = readMessage();
-            message.setSender(user);
-            MessageActionMap.process(application.getClientMessageProcessor(), message);
+            MessageActionMap.process(application.getClientMessageProcessor(), message, user);
         }
     }
 

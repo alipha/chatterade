@@ -4,6 +4,8 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
+import com.liph.chatterade.chat.models.Contact;
+import com.liph.chatterade.chat.models.ResolveTargetResult;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.models.ConnectMessage;
 import com.liph.chatterade.messaging.models.JoinMessage;
@@ -19,7 +21,7 @@ import com.liph.chatterade.messaging.models.UserMessage;
 import java.util.Optional;
 
 
-public class ServerMessageProcessor implements MessageProcessor {
+public class ServerMessageProcessor {
 
     private final Application application;
 
@@ -29,82 +31,57 @@ public class ServerMessageProcessor implements MessageProcessor {
     }
 
 
-    public void processJoin(JoinMessage message) {
+    public void processJoin(JoinMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processNick(NickMessage message) {
+    public void processNick(NickMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processNotice(NoticeMessage message) {
+    public void processNotice(NoticeMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processPart(PartMessage message) {
+    public void processPart(PartMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processPass(PassMessage message) {
+    public void processPass(PassMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processPrivateMessage(PrivateMessage message) {
+    public void processPrivateMessage(PrivateMessage message, Contact sender, ClientUser recipient) {
         // TODO: separate out the ServerMessageProcessor code from the ClientMessageProcessor code
-        /*
-        Pair<Optional<ClientUser>, Optional<String>> targetAndPreviousNick = resolveTargetClientUser(message.getTarget(), message.getSender());
-        Optional<ClientUser> target = targetAndPreviousNick.getFirst();
-        Optional<String> previousNick = targetAndPreviousNick.getSecond();
-        */
-        Optional<ClientUser> senderClientUser = Optional.empty();
 
-        if(message.getSender() instanceof ClientUser) {
-            senderClientUser = Optional.of((ClientUser)message.getSender());
-        }
+        ResolveTargetResult result = application.getClientUserManager().resolveTargetUser(message.getTarget(), Optional.empty());
 
-        Optional<User> targetOpt = application.getClientUserManager().resolveTargetUser(message.getTarget(), senderClientUser);
+        if(result.getClientUser().map(t -> !t.equals(recipient)).orElse(false))
+            return;
 
-        if(targetOpt.isPresent()) {
-            User target = targetOpt.get();
+        Optional<String> previousNick = recipient.addOrUpdateContact(sender);
+        previousNick.ifPresent(previous -> application.sendNickChange(recipient, previous, sender.getPublicKey(), sender.getNick().get()));
 
-            //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
-            String targetNick = target.getNick().orElse(target.getPublicKey().get().getBase32SigningKey());
-
-            if(!targetNick.equals(message.getTargetText())) {
-                senderClientUser.ifPresent(u -> application.sendNickChange(u, message.getTargetText(), target));
-            }
-
-            if(target instanceof ClientUser) {
-                ClientUser targetClientUser = (ClientUser)target;
-                Optional<String> previousNick = targetClientUser.addOrUpdateContact(message.getSender());
-                previousNick.ifPresent(previous -> application.sendNickChange(targetClientUser, previous, message.getSender().getPublicKey(), message.getSender()));
-
-                targetClientUser.getConnection().sendMessage(message.getSender(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
-            } else {
-                senderClientUser.ifPresent(u -> application.getClientUserManager().sendNetworkMessage(u, MessageType.PRIVMSG, target, format(":%s", message.getText())));
-            }
-        } else {
-            senderClientUser.ifPresent(u -> u.getConnection().sendMessage(application.getServerName(), "401", format("%s :No such nick/channel", message.getTargetText())));
-        }
+        recipient.getConnection().sendMessage(sender, MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
     }
 
-    public void processQuit(QuitMessage message) {
+    public void processQuit(QuitMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processUser(UserMessage message) {
+    public void processUser(UserMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processPing(PingMessage message) {
+    public void processPing(PingMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processPong(PongMessage message) {
+    public void processPong(PongMessage message, Contact sender, ClientUser recipient) {
 
     }
 
-    public void processConnect(ConnectMessage message) {
+    public void processConnect(ConnectMessage message, Contact sender, ClientUser recipient) {
 
     }
 }

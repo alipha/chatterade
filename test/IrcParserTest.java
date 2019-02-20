@@ -1,11 +1,15 @@
+import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.enums.TargetType;
 import com.liph.chatterade.parsing.IrcParser;
+import com.liph.chatterade.parsing.models.Target;
 import com.liph.chatterade.parsing.models.TokenizedMessage;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +19,7 @@ public class IrcParserTest {
     public void test() {
         assertEquals(1, 1);
     }
-/*
+
     @Test
     public void BasicTokenizingTest() {
         IrcParser parser = new IrcParser();
@@ -34,8 +38,8 @@ public class IrcParserTest {
         assertEquals("My Real  Name", m.getArguments().get(3));
         assertTrue(m.hasTrailingArgument());
 
-        assertFalse(m.getTargetName().isPresent());
-        assertTrue(m.getTargetNames().isEmpty());
+        assertFalse(m.getTargetText().isPresent());
+        assertTrue(m.getTargets().isEmpty());
         
         assertEquals(input, m.getRawMessage());
     }
@@ -76,8 +80,8 @@ public class IrcParserTest {
         assertEquals(0, m1.getArguments().size());
         assertFalse(m1.hasTrailingArgument());
 
-        assertFalse(m1.getTargetName().isPresent());
-        assertTrue(m1.getTargetNames().isEmpty());
+        assertFalse(m1.getTargetText().isPresent());
+        assertTrue(m1.getTargets().isEmpty());
 
         // m2 test
         assertFalse(m2.getSenderName().isPresent());
@@ -90,8 +94,8 @@ public class IrcParserTest {
         assertEquals("world", m2.getArguments().get(2));
         assertFalse(m2.hasTrailingArgument());
 
-        assertFalse(m2.getTargetName().isPresent());
-        assertTrue(m2.getTargetNames().isEmpty());
+        assertFalse(m2.getTargetText().isPresent());
+        assertTrue(m2.getTargets().isEmpty());
 
         // m3 test
         assertEquals(Optional.of("bob"), m3.getSenderName());
@@ -102,8 +106,8 @@ public class IrcParserTest {
         assertEquals("foo bar", m3.getArguments().get(0));
         assertTrue(m3.hasTrailingArgument());
 
-        assertFalse(m3.getTargetName().isPresent());
-        assertTrue(m3.getTargetNames().isEmpty());
+        assertFalse(m3.getTargetText().isPresent());
+        assertTrue(m3.getTargets().isEmpty());
     }
 
     @Test
@@ -124,12 +128,13 @@ public class IrcParserTest {
         assertFalse(m1.hasTrailingArgument());
         assertEquals(TargetType.MULTIPLE_CHANNELS, m1.getTargetType());
 
-        assertEquals(Optional.of("#foo,#bar,#baz"), m1.getTargetName());
+        assertEquals(Optional.of("#foo,#bar,#baz"), m1.getTargetText());
 
-        assertEquals(3, m1.getTargetNames().size());
-        assertEquals("#foo", m1.getTargetNames().get(0));
-        assertEquals("#bar", m1.getTargetNames().get(1));
-        assertEquals("#baz", m1.getTargetNames().get(2));
+        assertEquals(3, m1.getTargets().size());
+        verifyTargets(m1.getTargets());
+        assertEquals(Optional.of("#foo"), m1.getTargets().get(0).getChannel());
+        assertEquals(Optional.of("#bar"), m1.getTargets().get(1).getChannel());
+        assertEquals(Optional.of("#baz"), m1.getTargets().get(2).getChannel());
 
         // m2 test
         assertEquals(1, m2.getArguments().size());
@@ -137,34 +142,37 @@ public class IrcParserTest {
         assertFalse(m2.hasTrailingArgument());
         assertEquals(TargetType.MULTIPLE_CHANNELS, m2.getTargetType());
 
-        assertEquals(Optional.of("&foo,&bar,#baz"), m2.getTargetName());
+        assertEquals(Optional.of("&foo,&bar,#baz"), m2.getTargetText());
 
-        assertEquals(3, m2.getTargetNames().size());
-        assertEquals("&foo", m2.getTargetNames().get(0));
-        assertEquals("&bar", m2.getTargetNames().get(1));
-        assertEquals("#baz", m2.getTargetNames().get(2));
+        assertEquals(3, m2.getTargets().size());
+        verifyTargets(m2.getTargets());
+        assertEquals(Optional.of("&foo"), m2.getTargets().get(0).getChannel());
+        assertEquals(Optional.of("&bar"), m2.getTargets().get(1).getChannel());
+        assertEquals(Optional.of("#baz"), m2.getTargets().get(2).getChannel());
         
         // m3 test
         assertTrue(m3.getArguments().isEmpty());
         assertFalse(m3.hasTrailingArgument());
         assertEquals(TargetType.INVALID, m3.getTargetType());
 
-        assertEquals(Optional.of("#foo,Bob,#baz"), m3.getTargetName());
+        assertEquals(Optional.of("#foo,Bob,#baz"), m3.getTargetText());
 
-        assertEquals(3, m3.getTargetNames().size());
-        assertEquals("#foo", m3.getTargetNames().get(0));
-        assertEquals("Bob", m3.getTargetNames().get(1));
-        assertEquals("#baz", m3.getTargetNames().get(2));
+        assertEquals(3, m3.getTargets().size());
+        verifyTargets(m3.getTargets());
+        assertEquals(Optional.of("#foo"), m3.getTargets().get(0).getChannel());
+        assertEquals(Optional.of("Bob"), m3.getTargets().get(1).getNick());
+        assertEquals(Optional.of("#baz"), m3.getTargets().get(2).getChannel());
 
         // m4 test
         assertTrue(m4.getArguments().isEmpty());
         assertFalse(m4.hasTrailingArgument());
         assertEquals(TargetType.CHANNEL, m4.getTargetType());
 
-        assertEquals(Optional.of("#foo"), m4.getTargetName());
+        assertEquals(Optional.of("#foo"), m4.getTargetText());
 
-        assertEquals(1, m4.getTargetNames().size());
-        assertEquals("#foo", m4.getTargetNames().get(0));
+        assertEquals(1, m4.getTargets().size());
+        verifyTargets(m4.getTargets());
+        assertEquals(Optional.of("#foo"), m4.getTargets().get(0).getChannel());
 
         // m5 test
         assertEquals(1, m5.getArguments().size());
@@ -172,10 +180,34 @@ public class IrcParserTest {
         assertTrue(m5.hasTrailingArgument());
         assertEquals(TargetType.USER, m5.getTargetType());
 
-        assertEquals(Optional.of("Bob"), m5.getTargetName());
+        assertEquals(Optional.of("Bob"), m5.getTargetText());
 
-        assertEquals(1, m5.getTargetNames().size());
-        assertEquals("Bob", m5.getTargetNames().get(0));
+        assertEquals(1, m5.getTargets().size());
+        verifyTargets(m5.getTargets());
+        assertEquals(Optional.of("Bob"), m5.getTargets().get(0).getNick());
     }
-    */
+
+
+    private void verifyTargets(List<Target> targets) {
+        for(Target target : targets) {
+            switch(target.getTargetType()) {
+                case CHANNEL:
+                    assertTrue(target.getChannel().isPresent());
+                    assertFalse(target.getNick().isPresent());
+                    break;
+                case USER:
+                    assertFalse(target.getChannel().isPresent());
+                    assertTrue(target.getNick().isPresent());
+                    break;
+                default:
+                    fail(format("Invalid target: %s", target.toString()));
+                /*case NONE:
+                case CHANNEL:
+                case USER:
+                case CHANNEL_OR_USER:
+                case MULTIPLE_CHANNELS:
+                case INVALID:*/
+            }
+        }
+    }
 }

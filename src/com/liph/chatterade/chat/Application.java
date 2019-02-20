@@ -141,7 +141,7 @@ public class Application {
     public Optional<DecryptedMessage> decryptMessage(byte[] encryptedMessage) {
 
         for(ClientUser user : clientUserManager.getUsers()) {
-            Optional<DecryptedMessage> decryptedMessage = encryptionService.decryptMessage(user.getKeyPair(), encryptedMessage);
+            Optional<DecryptedMessage> decryptedMessage = encryptionService.decryptMessage(user, encryptedMessage);
             if(decryptedMessage.isPresent())
                 return decryptedMessage;
         }

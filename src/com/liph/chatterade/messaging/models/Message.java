@@ -8,8 +8,6 @@ public abstract class Message {
 
     private final TokenizedMessage tokenizedMessage;
 
-    private User sender;
-
 
     protected Message(TokenizedMessage tokenizedMessage) {
         this.tokenizedMessage = tokenizedMessage;
@@ -21,14 +19,5 @@ public abstract class Message {
 
     public TokenizedMessage getTokenizedMessage() {
         return tokenizedMessage;
-    }
-
-
-    public User getSender() {
-        return sender;
-    }
-
-    public void setSender(User sender) {
-        this.sender = sender;
     }
 }

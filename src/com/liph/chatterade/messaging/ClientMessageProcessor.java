@@ -4,6 +4,8 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
+import com.liph.chatterade.chat.models.Contact;
+import com.liph.chatterade.chat.models.ResolveTargetResult;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.models.ConnectMessage;
@@ -21,7 +23,7 @@ import java.net.Socket;
 import java.util.Optional;
 
 
-public class ClientMessageProcessor implements MessageProcessor {
+public class ClientMessageProcessor {
 
     private final Application application;
 
@@ -31,7 +33,7 @@ public class ClientMessageProcessor implements MessageProcessor {
     }
 
 
-    public void processJoin(JoinMessage message) {
+    public void processJoin(JoinMessage message, ClientUser sender) {
     /*    ClientUser user = message.getSender();
 
         for(Entry<String, Optional<String>> channelKey : message.getChannelKeyMap().entrySet()) {
@@ -43,79 +45,82 @@ public class ClientMessageProcessor implements MessageProcessor {
         */
     }
 
-    public void processNick(NickMessage message) {
-        message.getSender().setNick(Optional.of(message.getNewNick()));
+    public void processNick(NickMessage message, ClientUser sender) {
+        sender.setNick(message.getNewNick());
+        // TODO: send nick message
     }
 
-    public void processNotice(NoticeMessage message) {
-
-    }
-
-    public void processPart(PartMessage message) {
+    public void processNotice(NoticeMessage message, ClientUser sender) {
 
     }
 
-    public void processPass(PassMessage message) {
+    public void processPart(PartMessage message, ClientUser sender) {
 
     }
 
-    public void processPrivateMessage(PrivateMessage message) {
+    public void processPass(PassMessage message, ClientUser sender) {
+
+    }
+
+    public void processPrivateMessage(PrivateMessage message, ClientUser sender) {
         // TODO: separate out the ServerMessageProcessor code from the ClientMessageProcessor code
         /*
         Pair<Optional<ClientUser>, Optional<String>> targetAndPreviousNick = resolveTargetClientUser(message.getTarget(), message.getSender());
         Optional<ClientUser> target = targetAndPreviousNick.getFirst();
         Optional<String> previousNick = targetAndPreviousNick.getSecond();
         */
-        Optional<ClientUser> senderClientUser = Optional.empty();
 
-        if(message.getSender() instanceof ClientUser) {
-            senderClientUser = Optional.of((ClientUser)message.getSender());
-        }
+        ResolveTargetResult result = application.getClientUserManager().resolveTargetUser(message.getTarget(), Optional.of(sender));
 
-        Optional<User> targetOpt = application.getClientUserManager().resolveTargetUser(message.getTarget(), senderClientUser);
-
-        if(targetOpt.isPresent()) {
-            User target = targetOpt.get();
+        if(result.getClientUser().isPresent()) {
+            ClientUser target = result.getClientUser().get();
 
             //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
-            String targetNick = target.getNick().orElse(target.getPublicKey().get().getBase32SigningKey());
+            if(!target.getNick().equals(message.getTargetText())) {
+                application.sendNickChange(sender, message.getTargetText(), target.getPublicKey(), target.getNick());
+            }
+
+
+            Optional<String> previousNick = target.addOrUpdateContact(sender.asContact());
+            previousNick.ifPresent(previous -> application.sendNickChange(target, previous, sender.getPublicKey(), sender.getNick()));
+
+            String senderName = application.getIrcFormatter().getFullyQualifiedName(sender);
+            target.getConnection().sendMessage(senderName, MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+
+        } else if(result.getContact().isPresent()) {
+            Contact target = result.getContact().get();
+
+            //previousNick.ifPresent(n -> message.getSender().getConnection().sendMessage(format(":%s NICK %s", n, target.get().getNick().get())));
+            String targetNick = target.getNick().orElse(target.getPublicKey().getBase32SigningKey());
 
             if(!targetNick.equals(message.getTargetText())) {
-                senderClientUser.ifPresent(u -> application.sendNickChange(u, message.getTargetText(), target.getPublicKey(), targetNick));
+                application.sendNickChange(sender, message.getTargetText(), target.getPublicKey(), targetNick);
             }
 
-            if(target instanceof ClientUser) {
-                ClientUser targetClientUser = (ClientUser)target;
-                Optional<String> previousNick = targetClientUser.addOrUpdateContact(message.getSender());
-                previousNick.ifPresent(previous -> application.sendNickChange(targetClientUser, previous, message.getSender().getPublicKey(), message.getSender()));
-
-                targetClientUser.getConnection().sendMessage(message.getSender(), MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
-            } else {
-                senderClientUser.ifPresent(u -> application.getClientUserManager().sendNetworkMessage(u, MessageType.PRIVMSG, target, format(":%s", message.getText())));
-            }
+            application.getClientUserManager().sendNetworkMessage(sender, MessageType.PRIVMSG, target, format(":%s", message.getText()));
         } else {
-            senderClientUser.ifPresent(u -> u.getConnection().sendMessage(application.getServerName(), "401", format("%s :No such nick/channel", message.getTargetText())));
+            sender.getConnection().sendMessage(application.getServerName(), "401", format("%s :No such nick/channel", message.getTargetText()));
         }
     }
 
-    public void processQuit(QuitMessage message) {
+    public void processQuit(QuitMessage message, ClientUser sender) {
 
     }
 
-    public void processUser(UserMessage message) {
+    public void processUser(UserMessage message, ClientUser sender) {
 
     }
 
-    public void processPing(PingMessage message) {
+    public void processPing(PingMessage message, ClientUser sender) {
         String formatted = application.getIrcFormatter().formatMessage(application.getServerName(), MessageType.PONG.getIrcCommand(), format(":%s", message.getText()));
-        ((ClientUser)message.getSender()).getConnection().sendMessage(formatted);
+        sender.getConnection().sendMessage(formatted);
     }
 
-    public void processPong(PongMessage message) {
+    public void processPong(PongMessage message, ClientUser sender) {
 
     }
 
-    public void processConnect(ConnectMessage message) {
+    public void processConnect(ConnectMessage message, ClientUser sender) {
         try {
             Socket socket = new Socket(message.getServer(), message.getPort().orElse(6667));
             ServerConnection connection = new ServerConnection(application, socket);

@@ -2,6 +2,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.DecryptedMessage;
@@ -20,7 +21,7 @@ public class MessageEncryptionTest {
 
         ByteArray recentMessageHash = new ByteArray(new byte[] {123, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, -100});
         KeyPair sender = encryptionService.generateKeyPair();
-        KeyPair recipient = encryptionService.generateKeyPair();
+        ClientUser recipient = new ClientUser("recipient_1", encryptionService.generateKeyPair(), null);
         PublicKey targetPublicKey = new PublicKey(recipient.getPublicKey().getSigningKey().getBytes());
         String message = "PRIVMSG Bob :testing";
 
@@ -33,11 +34,11 @@ public class MessageEncryptionTest {
         assertTrue(decryptedMessage.isPresent());
         assertEquals(recentMessageHash, decryptedMessage.get().getRecentMessageHash());
         assertEquals(sender.getPublicKey().getSigningKey(), decryptedMessage.get().getSenderPublicKey());
-        assertEquals(recipient.getPublicKey(), decryptedMessage.get().getTargetPublicKey());
+        assertEquals(recipient, decryptedMessage.get().getRecipient());
         assertEquals(message, decryptedMessage.get().getMessage());
 
         // another user can't decrypt
-        KeyPair nonRecipient = encryptionService.generateKeyPair();
+        ClientUser nonRecipient = new ClientUser("recipient_2", encryptionService.generateKeyPair(), null);
         decryptedMessage = encryptionService.decryptMessage(nonRecipient, encryptedMessage);
 
         assertFalse(decryptedMessage.isPresent());
