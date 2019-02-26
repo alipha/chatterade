@@ -38,11 +38,6 @@ public class ConnectionListener implements Runnable {
     }
 
 
-    public List<Connection> getConnections() {
-        return connections;
-    }
-
-
     @Override
     public void run() {
         try {

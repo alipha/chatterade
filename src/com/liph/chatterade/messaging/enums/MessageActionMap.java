@@ -5,7 +5,8 @@ import static java.lang.String.format;
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.Contact;
 import com.liph.chatterade.common.QuadConsumer;
-import com.liph.chatterade.common.TriConsumer;
+import com.liph.chatterade.common.QuadConsumer;
+import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.messaging.ClientMessageProcessor;
 import com.liph.chatterade.messaging.MessageProcessor;
 import com.liph.chatterade.common.EnumHelper;
@@ -30,21 +31,21 @@ public enum MessageActionMap {
     CONNECT(wrapClient(ClientMessageProcessor::processConnect),        wrapServer(ServerMessageProcessor::processConnect));
     
     
-    private TriConsumer<ClientMessageProcessor, Message, ClientUser> clientMessageConsumer;
+    private QuadConsumer<ClientMessageProcessor, Message, ClientUser, ClientConnection> clientMessageConsumer;
     private QuadConsumer<ServerMessageProcessor, Message, Contact, ClientUser> serverMessageConsumer;
     
     
-    MessageActionMap(TriConsumer<ClientMessageProcessor, Message, ClientUser> clientMessageConsumer, QuadConsumer<ServerMessageProcessor, Message, Contact, ClientUser> serverMessageConsumer) {
+    MessageActionMap(QuadConsumer<ClientMessageProcessor, Message, ClientUser, ClientConnection> clientMessageConsumer, QuadConsumer<ServerMessageProcessor, Message, Contact, ClientUser> serverMessageConsumer) {
         this.clientMessageConsumer = clientMessageConsumer;
         this.serverMessageConsumer = serverMessageConsumer;
     }
     
     
-    public static void process(ClientMessageProcessor processor, Message message, ClientUser sender) {
+    public static void process(ClientMessageProcessor processor, Message message, ClientUser sender, ClientConnection connection) {
         MessageActionMap messageAction = fromName(message.getType().name())
             .orElseThrow(() -> new IllegalStateException(format("%s is missing in MessageActionMap.", message.getType().name())));
 
-        messageAction.clientMessageConsumer.accept(processor, message, sender);
+        messageAction.clientMessageConsumer.accept(processor, message, sender, connection);
     }
 
     public static void process(ServerMessageProcessor processor, Message message, Contact sender, ClientUser recipient) {
@@ -59,8 +60,8 @@ public enum MessageActionMap {
     }
 
 
-    private static <T extends Message> TriConsumer<ClientMessageProcessor, Message, ClientUser> wrapClient(TriConsumer<ClientMessageProcessor, T, ClientUser> consumer) {
-        return (a, m, s) -> consumer.accept(a, (T)m, s);
+    private static <T extends Message> QuadConsumer<ClientMessageProcessor, Message, ClientUser, ClientConnection> wrapClient(QuadConsumer<ClientMessageProcessor, T, ClientUser, ClientConnection> consumer) {
+        return (a, m, s, c) -> consumer.accept(a, (T)m, s, c);
     }
 
     private static <T extends Message> QuadConsumer<ServerMessageProcessor, Message, Contact, ClientUser> wrapServer(QuadConsumer<ServerMessageProcessor, T, Contact, ClientUser> consumer) {

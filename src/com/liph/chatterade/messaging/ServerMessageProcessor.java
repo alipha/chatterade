@@ -62,7 +62,7 @@ public class ServerMessageProcessor {
         Optional<String> previousNick = recipient.addOrUpdateContact(sender);
         previousNick.ifPresent(previous -> application.sendNickChange(recipient, previous, sender.getPublicKey(), sender.getNick().get()));
 
-        recipient.getConnection().sendMessage(sender, MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+        recipient.sendMessage(sender, MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
     }
 
     public void processQuit(QuitMessage message, Contact sender, ClientUser recipient) {

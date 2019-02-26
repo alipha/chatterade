@@ -6,6 +6,7 @@ import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.Contact;
 import com.liph.chatterade.chat.models.ResolveTargetResult;
+import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.models.ConnectMessage;
@@ -33,7 +34,7 @@ public class ClientMessageProcessor {
     }
 
 
-    public void processJoin(JoinMessage message, ClientUser sender) {
+    public void processJoin(JoinMessage message, ClientUser sender, ClientConnection connection) {
     /*    ClientUser user = message.getSender();
 
         for(Entry<String, Optional<String>> channelKey : message.getChannelKeyMap().entrySet()) {
@@ -45,30 +46,31 @@ public class ClientMessageProcessor {
         */
     }
 
-    public void processNick(NickMessage message, ClientUser sender) {
+    public void processNick(NickMessage message, ClientUser sender, ClientConnection connection) {
         sender.setNick(message.getNewNick());
         // TODO: send nick message
     }
 
-    public void processNotice(NoticeMessage message, ClientUser sender) {
+    public void processNotice(NoticeMessage message, ClientUser sender, ClientConnection connection) {
 
     }
 
-    public void processPart(PartMessage message, ClientUser sender) {
+    public void processPart(PartMessage message, ClientUser sender, ClientConnection connection) {
 
     }
 
-    public void processPass(PassMessage message, ClientUser sender) {
+    public void processPass(PassMessage message, ClientUser sender, ClientConnection connection) {
 
     }
 
-    public void processPrivateMessage(PrivateMessage message, ClientUser sender) {
+    public void processPrivateMessage(PrivateMessage message, ClientUser sender, ClientConnection connection) {
         // TODO: separate out the ServerMessageProcessor code from the ClientMessageProcessor code
         /*
         Pair<Optional<ClientUser>, Optional<String>> targetAndPreviousNick = resolveTargetClientUser(message.getTarget(), message.getSender());
         Optional<ClientUser> target = targetAndPreviousNick.getFirst();
         Optional<String> previousNick = targetAndPreviousNick.getSecond();
         */
+        connection.echoMessage(message);
 
         ResolveTargetResult result = application.getClientUserManager().resolveTargetUser(message.getTarget(), Optional.of(sender));
 
@@ -85,7 +87,7 @@ public class ClientMessageProcessor {
             previousNick.ifPresent(previous -> application.sendNickChange(target, previous, sender.getPublicKey(), sender.getNick()));
 
             String senderName = application.getIrcFormatter().getFullyQualifiedName(sender);
-            target.getConnection().sendMessage(senderName, MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
+            target.sendMessage(senderName, MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));
 
         } else if(result.getContact().isPresent()) {
             Contact target = result.getContact().get();
@@ -99,32 +101,38 @@ public class ClientMessageProcessor {
 
             application.getClientUserManager().sendNetworkMessage(sender, MessageType.PRIVMSG, target, format(":%s", message.getText()));
         } else {
-            sender.getConnection().sendMessage(application.getServerName(), "401", format("%s :No such nick/channel", message.getTargetText()));
+            sender.sendMessage(application.getServerName(), "401", format("%s :No such nick/channel", message.getTargetText()));
         }
     }
 
-    public void processQuit(QuitMessage message, ClientUser sender) {
+    public void processQuit(QuitMessage message, ClientUser sender, ClientConnection connection) {
 
     }
 
-    public void processUser(UserMessage message, ClientUser sender) {
+    public void processUser(UserMessage message, ClientUser sender, ClientConnection connection) {
 
     }
 
-    public void processPing(PingMessage message, ClientUser sender) {
-        String formatted = application.getIrcFormatter().formatMessage(application.getServerName(), MessageType.PONG.getIrcCommand(), format(":%s", message.getText()));
-        sender.getConnection().sendMessage(formatted);
+    public void processPing(PingMessage message, ClientUser sender, ClientConnection connection) {
+        String replyText = message.getText();
+        if(replyText.startsWith(":"))
+            replyText = replyText.substring(1);
+
+        String reply = format("%s :%s", application.getServerName(), replyText);
+
+        String formatted = application.getIrcFormatter().formatMessage(application.getServerName(), MessageType.PONG.getIrcCommand(), reply);
+        connection.sendMessage(formatted);
     }
 
-    public void processPong(PongMessage message, ClientUser sender) {
+    public void processPong(PongMessage message, ClientUser sender, ClientConnection connection) {
 
     }
 
-    public void processConnect(ConnectMessage message, ClientUser sender) {
+    public void processConnect(ConnectMessage message, ClientUser sender, ClientConnection clientConnection) {
         try {
             Socket socket = new Socket(message.getServer(), message.getPort().orElse(6667));
-            ServerConnection connection = new ServerConnection(application, socket);
-            new Thread(connection).start();
+            ServerConnection serverConnection = new ServerConnection(application, socket);
+            new Thread(serverConnection).start();
         } catch(Exception e) {
             e.printStackTrace();
         }

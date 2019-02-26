@@ -9,12 +9,16 @@ import com.liph.chatterade.chat.models.ResolveTargetResult;
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.encryption.EncryptionService;
+import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.encryption.models.PublicKey;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.enums.TargetType;
 import com.liph.chatterade.parsing.IrcFormatter;
 import com.liph.chatterade.parsing.models.Target;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,12 +29,14 @@ public class ClientUserManager {
     private final Application application;
     private final IrcFormatter ircFormatter;
     private final Map<ByteArray, ClientUser> clientUsersByPublicKey;
+    private final Map<ByteArray, ClientUser> clientUsersByPasswordKey;
 
 
     public ClientUserManager(Application application) {
         this.application = application;
         this.ircFormatter = application.getIrcFormatter();
         this.clientUsersByPublicKey = new ConcurrentHashMap<>();
+        this.clientUsersByPasswordKey = new HashMap<>();
     }
 
 
@@ -39,11 +45,21 @@ public class ClientUserManager {
     }
 
 
-    public ClientUser addUser(ClientUser user) {
+    public synchronized ClientUser addUser(String nick, Optional<ByteArray> passwordKey, ClientConnection connection) {
+        Optional<ClientUser> existingUser = passwordKey.flatMap(k -> Optional.ofNullable(clientUsersByPasswordKey.get(k)));
+        ClientUser user;
 
-        clientUsersByPublicKey.put(user.getPublicKey().getSigningKey(), user);
+        if(existingUser.isPresent()) {
+            user = existingUser.get();
+            user.addConnection(connection);
+        } else {
+            KeyPair keyPair = EncryptionService.getInstance().generateKeyPair();
+            user = new ClientUser(nick, passwordKey, keyPair, connection);
 
-        sendWelcomeMessage(user.getConnection(), user.getPublicKey().getBase32SigningKey(), user);
+            clientUsersByPublicKey.put(user.getPublicKey().getSigningKey(), user);
+            passwordKey.ifPresent(k -> clientUsersByPasswordKey.put(k, user));
+        }
+
         return user;
     }
 
@@ -54,7 +70,7 @@ public class ClientUserManager {
             channel.getUsers().remove(clientUser);
         }
         */
-        clientUsersByPublicKey.remove(clientUser.getPublicKey().getSigningKey());
+        //clientUsersByPublicKey.remove(clientUser.getPublicKey().getSigningKey());
     }
 
 
@@ -105,7 +121,8 @@ public class ClientUserManager {
     }
 
 
-    private void sendWelcomeMessage(ClientConnection connection, String keyBase32, ClientUser user) {
+    public void sendWelcomeMessage(ClientConnection connection, ClientUser user) {
+        String keyBase32 = user.getPublicKey().getBase32SigningKey();
         String serverName = application.getServerName();
         connection.sendMessage(serverName, "001", format(":Welcome to the Internet Relay Network %s", ircFormatter.getFullyQualifiedName(user)));
         connection.sendMessage(serverName, "002", format(":Your host is %s, running version %s", serverName, application.getServerVersion()));

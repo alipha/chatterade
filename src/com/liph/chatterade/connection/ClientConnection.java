@@ -5,6 +5,7 @@ import static java.lang.String.format;
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.Contact;
+import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.messaging.enums.MessageActionMap;
@@ -63,9 +64,9 @@ public class ClientConnection extends Connection {
         }
         String nick = ((NickMessage)message).getNewNick();
 
+        Optional<ByteArray> passwordKey = serverPass.map(p -> EncryptionService.getInstance().deriveKey(nick, p));
 
-        KeyPair keyPair = EncryptionService.getInstance().generateKeyPair();
-        ClientUser user = new ClientUser(nick, keyPair, this);
+        ClientUser user = application.getClientUserManager().addUser(nick, passwordKey, this);
         clientUser = Optional.of(user);
 
         // read until USER message is sent
@@ -76,12 +77,12 @@ public class ClientConnection extends Connection {
         user.setUsername(Optional.of(userMessage.getUsername()));
         user.setRealName(Optional.of(userMessage.getRealName()));
 
-        application.getClientUserManager().addUser(user);
+        application.getClientUserManager().sendWelcomeMessage(this, user);
 
         // user is logged in, now perform message loop
         while(true) {
             message = readMessage();
-            MessageActionMap.process(application.getClientMessageProcessor(), message, user);
+            MessageActionMap.process(application.getClientMessageProcessor(), message, user, this);
         }
     }
 
@@ -99,7 +100,7 @@ public class ClientConnection extends Connection {
             e.printStackTrace();
         }
 
-        clientUser.ifPresent(u -> application.getClientUserManager().removeUser(u));
+        clientUser.ifPresent(u -> u.removeConnection(this));
     }
 
 
@@ -119,6 +120,12 @@ public class ClientConnection extends Connection {
 
     public void sendMessage(Contact sender, String messageType, String message) {
         sendMessage(ircFormatter.getFullyQualifiedName(sender), messageType, message);
+    }
+
+
+    public void echoMessage(Message message) {
+        String rawMessage = message.getTokenizedMessage().getRawMessage();
+        clientUser.ifPresent(cu -> cu.forAllConnections(u -> u.sendMessage(ircFormatter.replaceSender(rawMessage, cu)), Optional.of(this)));
     }
 
 

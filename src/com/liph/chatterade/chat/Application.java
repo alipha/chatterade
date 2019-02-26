@@ -152,8 +152,8 @@ public class Application {
 
     public void sendNickChange(ClientUser user, String previousNick, PublicKey publicKey, String newNick) {
         String sender = ircFormatter.getFullyQualifiedName(previousNick, "unknown", publicKey);
-        String message = ircFormatter.formatMessage(sender, "NICK", format(":%s", newNick));
-        user.getConnection().sendMessage(message);
+        String formatted = ircFormatter.formatMessage(sender, "NICK", format(":%s", newNick));
+        user.sendMessage(formatted);
     }
 
 

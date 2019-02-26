@@ -44,7 +44,6 @@ public class IrcParser {
         String messageTypeText = "";
         Optional<String> targetText = Optional.empty();
         List<Target> targets = Collections.emptyList();
-        String argumentText = "";
 
         if(text == null) {
             text = "";
@@ -93,9 +92,7 @@ public class IrcParser {
             targets = Stream.of(targetTexts).map(this::parseTarget).collect(toList());
         }
 
-        if(!tokens.isEmpty()) {
-            argumentText = String.join(" ", tokens) + trailingArg.map(a -> " :" + a).orElse("");
-        }
+        String argumentText = String.join(" ", tokens) + trailingArg.map(a -> " :" + a).orElse("");
 
         // the remaining tokens are the arguments to the command, so add the last argument (if there is one) to them
         trailingArg.ifPresent(tokens::add);
@@ -108,7 +105,7 @@ public class IrcParser {
             determineTargetType(targets),
             targetText,
             targets,
-            argumentText,
+            argumentText.trim(),
             tokens,
             trailingArgIndex >= 0,
             originalText

@@ -17,6 +17,20 @@ public class IrcFormatter {
         return format(":%s %s %s %s", sender, messageType, nick, message);
     }
 
+    public String replaceSender(String message, ClientUser sender) {
+        String senderName = getFullyQualifiedName(sender);
+
+        if(message.startsWith(":")) {
+            int spaceIndex = message.indexOf(' ');
+            if(spaceIndex >= 0)
+                message = message.substring(spaceIndex + 1);
+            else
+                message = "";
+        }
+
+        return format(":%s %s", senderName, message);
+    }
+
     public String getFullyQualifiedName(ClientUser user) {
         return getFullyQualifiedName(user.getNick(), user.getUsername().orElse("unknown"), user.getPublicKey());
     }

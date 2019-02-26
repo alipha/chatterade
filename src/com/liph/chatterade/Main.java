@@ -74,6 +74,19 @@ public class Main {
     }
 
 
+    public static void passwordTiming(String[] args) {
+        EncryptionService encryptionService = EncryptionService.getInstance();
+        long start = System.currentTimeMillis();
+
+        for(int i = 0; i < 1000; i++) {
+            encryptionService.deriveKey("Kevin", "Password");
+        }
+
+        long end = System.currentTimeMillis();
+        System.out.println(format("%.2f ms", (end - start) / 100.0));
+    }
+
+
     public static void timing() throws SodiumLibraryException {
         EncryptionService encryptionService = EncryptionService.getInstance();
 

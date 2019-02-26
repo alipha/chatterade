@@ -9,6 +9,7 @@ import com.liph.chatterade.encryption.models.Key;
 import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.encryption.models.PublicKey;
 import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
+import com.sun.jna.NativeLong;
 import com.sun.jna.Platform;
 import java.util.Arrays;
 import java.util.Optional;
@@ -46,6 +47,22 @@ public class EncryptionService {
     public KeyPair generateKeyPair() {
         try {
             return new KeyPair(SodiumLibrary.cryptoSignKeyPair());
+        } catch(SodiumLibraryException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public ByteArray deriveKey(String nick, String password) {
+        try {
+            byte[] salt = SodiumLibrary.cryptoGenerichash(nick.toLowerCase().getBytes(), 16, "chatterade".getBytes());
+
+            // lock to prevent DoS by out of memory errors
+            // TODO: rate-limit derivedKey to prevent DoS
+            synchronized (this) {
+                return new ByteArray(SodiumLibrary.cryptoPwhash(password.getBytes(), salt, 3, new NativeLong(1 << 23), 2));
+                //return SodiumLibrary.deriveKey(password.getBytes(), salt);
+            }
         } catch(SodiumLibraryException e) {
             throw new RuntimeException(e);
         }

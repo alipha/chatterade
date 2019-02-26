@@ -4,20 +4,26 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.connection.ClientConnection;
+import com.liph.chatterade.connection.Connection;
 import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.encryption.models.PrivateKey;
 import com.liph.chatterade.encryption.models.PublicKey;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 
 public class ClientUser {
 
-    private final ClientConnection connection;
+    private final Set<ClientConnection> connections;
     private final KeyPair keyPair;
 
     private String nick;
+    private Optional<ByteArray> passwordKey;
     private Optional<String> username = Optional.empty();
     private Optional<String> realName = Optional.empty();
 
@@ -26,18 +32,56 @@ public class ClientUser {
     private final Map<ByteArray, Contact> contactsByPublicKey;
 
 
-    public ClientUser(String nick, KeyPair keyPair, ClientConnection connection) {
+    public ClientUser(String nick, Optional<ByteArray> passwordKey, KeyPair keyPair, ClientConnection connection) {
         this.nick = nick;
-        this.connection = connection;
+        this.passwordKey = passwordKey;
+        this.connections = ConcurrentHashMap.newKeySet();
         this.keyPair = keyPair;
         this.contactsByNick = new HashMap<>();//new ConcurrentHashMap<>();
         this.contactsByPublicKey = new HashMap<>(); //new ConcurrentHashMap<>();
+
+        this.connections.add(connection);
     }
 
 
 
-    public ClientConnection getConnection() {
-        return connection;
+    public Set<ClientConnection> getConnections() {
+        return connections;
+    }
+
+    public void addConnection(ClientConnection connection) {
+        connections.add(connection);
+    }
+
+    public void removeConnection(ClientConnection connection) {
+        connections.remove(connection);
+    }
+
+
+    public void sendMessage(String message) {
+        forAllConnections(c -> c.sendMessage(message), Optional.empty());
+    }
+
+    public void sendMessage(String sender, String messageType, String message) {
+        forAllConnections(c -> c.sendMessage(sender, messageType, message), Optional.empty());
+    }
+
+    public void sendMessage(Contact sender, String messageType, String message) {
+        forAllConnections(c -> c.sendMessage(sender, messageType, message), Optional.empty());
+    }
+
+    public void forAllConnections(Consumer<ClientConnection> action, Optional<ClientConnection> excludeConnection) {
+        for(ClientConnection connection : connections) {
+            if(excludeConnection.isPresent() && connection == excludeConnection.get())
+                continue;
+
+            try {
+                action.accept(connection);
+            } catch(Exception e) {
+                e.printStackTrace();
+                connection.close();
+            }
+        }
     }
 
 
@@ -47,6 +91,14 @@ public class ClientUser {
 
     public void setNick(String nick) {
         this.nick = nick;
+    }
+
+    public Optional<ByteArray> getPasswordKey() {
+        return passwordKey;
+    }
+
+    public void setPasswordKey(Optional<ByteArray> passwordKey) {
+        this.passwordKey = passwordKey;
     }
 
     public Optional<String> getUsername() {
