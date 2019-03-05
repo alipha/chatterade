@@ -6,7 +6,7 @@ import java.io.OutputStream;
 import java.net.Socket;
 
 
-public abstract class Connection implements Runnable {
+public abstract class Connection implements Runnable, AutoCloseable {
 
     protected final Application application;
     protected final Socket socket;
@@ -42,6 +42,7 @@ public abstract class Connection implements Runnable {
     }
 
 
+    @Override
     public void close() {
         try {
             doClose();

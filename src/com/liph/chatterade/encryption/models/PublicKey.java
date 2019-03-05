@@ -1,8 +1,7 @@
 package com.liph.chatterade.encryption.models;
 
 import com.liph.chatterade.common.ByteArray;
-import com.liph.chatterade.encryption.SodiumLibrary;
-import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
+import com.liph.chatterade.encryption.EncryptionService;
 
 
 public class PublicKey extends Key {
@@ -22,10 +21,6 @@ public class PublicKey extends Key {
 
     @Override
     public byte[] getEncryptionKey() {
-        try {
-            return SodiumLibrary.cryptoSignEdPkTOcurvePk(getSigningKey().getBytes());
-        } catch(SodiumLibraryException e) {
-            throw new RuntimeException(e);
-        }
+        return EncryptionService.getInstance().getEncryptionPublicKey(getSigningKey());
     }
 }

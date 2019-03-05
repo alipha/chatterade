@@ -17,7 +17,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLServerSocketFactory;
 
 
-public class ConnectionListener implements Runnable {
+public class ConnectionListener implements Runnable, AutoCloseable {
 
     private final Application application;
     private final int port;
@@ -65,6 +65,7 @@ public class ConnectionListener implements Runnable {
     }
 
 
+    @Override
     public void close() {
         for(Connection connection : connections) {
             connection.close();

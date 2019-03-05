@@ -31,9 +31,10 @@ OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 package com.liph.chatterade.encryption;
 
+import com.liph.chatterade.encryption.exceptions.SodiumLibraryException;
+import com.liph.chatterade.encryption.models.SodiumKxKeyPair;
 import com.muquit.libsodiumjna.SodiumKeyPair;
 import com.muquit.libsodiumjna.SodiumSecretBox;
-import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLong;
@@ -79,14 +80,14 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoSignOpen(byte[] sig, byte[] pk) throws SodiumLibraryException {
+    public static byte[] cryptoSignOpen(byte[] sig, byte[] pk) {
         byte[] m = new byte[sig.length];
         byte[] mlen = new byte[1];
         int rc = sodium().crypto_sign_open(m, (long)mlen[0], sig, (long)sig.length, pk);
         return rc == 0?m:new byte[1];
     }
 
-    public static byte[] cryptoSign(byte[] m, byte[] sk) throws SodiumLibraryException {
+    public static byte[] cryptoSign(byte[] m, byte[] sk) {
         byte[] sm = new byte[sodium().crypto_sign_bytes() + m.length];
         byte[] test = new byte[1];
         int rc = sodium().crypto_sign(sm, (long)test[0], m, (long)m.length, sk);
@@ -97,7 +98,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static boolean cryptoSignVerifyDetached(byte[] sig, byte[] msg, byte[] pk) throws SodiumLibraryException {
+    public static boolean cryptoSignVerifyDetached(byte[] sig, byte[] msg, byte[] pk) {
         int rc = sodium().crypto_sign_verify_detached(sig, msg, (long)msg.length, pk);
         if(rc == 0) {
             return true;
@@ -108,7 +109,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoSignDetached(byte[] msg, byte[] sk) throws SodiumLibraryException {
+    public static byte[] cryptoSignDetached(byte[] msg, byte[] sk) {
         byte[] sig = new byte[sodium().crypto_sign_ed25519_bytes()];
         long[] siglen = new long[1];
         siglen[0] = sig.length;
@@ -121,7 +122,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static SodiumKeyPair cryptoSignKeyPair() throws SodiumLibraryException {
+    public static SodiumKeyPair cryptoSignKeyPair() {
         SodiumKeyPair kp = new SodiumKeyPair();
         byte[] publicKey = new byte[(int)sodium().crypto_sign_publickeybytes()];
         byte[] privateKey = new byte[(int)sodium().crypto_sign_secretkeybytes()];
@@ -137,7 +138,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoGenerichash(byte[] input, int length, byte[] key) throws SodiumLibraryException {
+    public static byte[] cryptoGenerichash(byte[] input, int length, byte[] key) {
         byte[] hash = new byte[length];
         int keyLen = key != null ? key.length : 0;
         int rc = sodium().crypto_generichash(hash, length, input, input.length, key, keyLen);
@@ -148,7 +149,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoSignEdSkTOcurveSk(byte[] edSK) throws SodiumLibraryException {
+    public static byte[] cryptoSignEdSkTOcurveSk(byte[] edSK) {
         byte[] curveSK = new byte[sodium().crypto_box_publickeybytes().intValue()];
         int rc = sodium().crypto_sign_ed25519_sk_to_curve25519(curveSK, edSK);
         if(rc != 0) {
@@ -158,7 +159,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoSignEdPkTOcurvePk(byte[] edPK) throws SodiumLibraryException {
+    public static byte[] cryptoSignEdPkTOcurvePk(byte[] edPK) {
         byte[] curvePK = new byte[sodium().crypto_box_publickeybytes().intValue()];
         int rc = sodium().crypto_sign_ed25519_pk_to_curve25519(curvePK, edPK);
         if(rc != 0) {
@@ -178,7 +179,7 @@ public class SodiumLibrary {
         return buf;
     }
 
-    public static byte[] cryptoPwhash(byte[] passwd, byte[] salt, long opsLimit, NativeLong memLimit, int algorithm) throws SodiumLibraryException {
+    public static byte[] cryptoPwhash(byte[] passwd, byte[] salt, long opsLimit, NativeLong memLimit, int algorithm) {
         byte[] key = new byte[sodium().crypto_box_seedbytes().intValue()];
         logger.info(">>> NavtiveLong size: " + NativeLong.SIZE * 8 + " bits");
         int rc = sodium().crypto_pwhash(key, (long)key.length, passwd, (long)passwd.length, salt, opsLimit, memLimit, algorithm);
@@ -190,7 +191,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoPwhashArgon2i(byte[] passwd, byte[] salt) throws SodiumLibraryException {
+    public static byte[] cryptoPwhashArgon2i(byte[] passwd, byte[] salt) {
         int saltLength = cryptoPwhashSaltBytes();
         if(salt.length != saltLength) {
             throw new SodiumLibraryException("salt is " + salt.length + ", it must be" + saltLength + " bytes");
@@ -210,11 +211,11 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] deriveKey(byte[] passwd, byte[] salt) throws SodiumLibraryException {
+    public static byte[] deriveKey(byte[] passwd, byte[] salt) {
         return cryptoPwhashArgon2i(passwd, salt);
     }
 
-    public static String cryptoPwhashStr(byte[] password) throws SodiumLibraryException {
+    public static String cryptoPwhashStr(byte[] password) {
         byte[] hashedPassword = new byte[sodium().crypto_pwhash_strbytes()];
         int rc = sodium().crypto_pwhash_str(hashedPassword, password, (long)password.length, sodium().crypto_pwhash_opslimit_interactive(), sodium().crypto_pwhash_memlimit_interactive());
         if(rc != 0) {
@@ -231,7 +232,7 @@ public class SodiumLibrary {
         return rc == 0;
     }
 
-    public static byte[] cryptoPwhashScrypt(byte[] passwd, byte[] salt) throws SodiumLibraryException {
+    public static byte[] cryptoPwhashScrypt(byte[] passwd, byte[] salt) {
         NativeLong salt_length = sodium().crypto_pwhash_scryptsalsa208sha256_saltbytes();
         if(salt.length != salt_length.intValue()) {
             throw new SodiumLibraryException("salt is " + salt.length + ", it must be" + salt_length + " bytes");
@@ -247,7 +248,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoPwhashScryptSalsa208Sha256(byte[] passwd, byte[] salt, Long opsLimit, NativeLong memLimit) throws SodiumLibraryException {
+    public static byte[] cryptoPwhashScryptSalsa208Sha256(byte[] passwd, byte[] salt, Long opsLimit, NativeLong memLimit) {
         NativeLong salt_length = sodium().crypto_pwhash_scryptsalsa208sha256_saltbytes();
         if(salt.length != salt_length.intValue()) {
             throw new SodiumLibraryException("salt is " + salt.length + ", it must be" + salt_length + " bytes");
@@ -263,7 +264,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoSecretBoxEasy(byte[] message, byte[] nonce, byte[] key) throws SodiumLibraryException {
+    public static byte[] cryptoSecretBoxEasy(byte[] message, byte[] nonce, byte[] key) {
         int nonce_length = sodium().crypto_secretbox_noncebytes().intValue();
         if(nonce_length != nonce.length) {
             throw new SodiumLibraryException("nonce is " + nonce.length + ", it must be" + nonce_length + " bytes");
@@ -278,7 +279,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoSecretBoxOpenEasy(byte[] cipherText, byte[] nonce, byte[] key) throws SodiumLibraryException {
+    public static byte[] cryptoSecretBoxOpenEasy(byte[] cipherText, byte[] nonce, byte[] key) {
         if(key.length != sodium().crypto_secretbox_keybytes().intValue()) {
             throw new SodiumLibraryException("invalid key length " + key.length + " bytes");
         } else if(nonce.length != sodium().crypto_secretbox_noncebytes().intValue()) {
@@ -294,7 +295,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static SodiumSecretBox cryptoSecretBoxDetached(byte[] message, byte[] nonce, byte[] key) throws SodiumLibraryException {
+    public static SodiumSecretBox cryptoSecretBoxDetached(byte[] message, byte[] nonce, byte[] key) {
         if(key.length != sodium().crypto_secretbox_keybytes().intValue()) {
             throw new SodiumLibraryException("invalid key length " + key.length + " bytes");
         } else if(nonce.length != sodium().crypto_secretbox_noncebytes().intValue()) {
@@ -314,7 +315,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoSecretBoxOpenDetached(SodiumSecretBox secretBox, byte[] nonce, byte[] key) throws SodiumLibraryException {
+    public static byte[] cryptoSecretBoxOpenDetached(SodiumSecretBox secretBox, byte[] nonce, byte[] key) {
         if(key.length != sodium().crypto_secretbox_keybytes().intValue()) {
             throw new SodiumLibraryException("invalid key length " + key.length + " bytes");
         } else if(nonce.length != sodium().crypto_secretbox_noncebytes().intValue()) {
@@ -336,7 +337,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoAuth(byte[] message, byte[] key) throws SodiumLibraryException {
+    public static byte[] cryptoAuth(byte[] message, byte[] key) {
         byte[] mac = new byte[sodium().crypto_auth_bytes().intValue()];
         int keySize = sodium().crypto_auth_keybytes().intValue();
         if(key.length != keySize) {
@@ -351,7 +352,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static boolean cryptoAuthVerify(byte[] mac, byte[] message, byte[] key) throws SodiumLibraryException {
+    public static boolean cryptoAuthVerify(byte[] mac, byte[] message, byte[] key) {
         int keySize = sodium().crypto_auth_keybytes().intValue();
         if(key.length != keySize) {
             throw new SodiumLibraryException("Expected key size " + keySize + " bytes, but passed " + key.length + " bytes");
@@ -361,7 +362,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static SodiumKeyPair cryptoBoxKeyPair() throws SodiumLibraryException {
+    public static SodiumKeyPair cryptoBoxKeyPair() {
         SodiumKeyPair kp = new SodiumKeyPair();
         byte[] publicKey = new byte[sodium().crypto_box_publickeybytes().intValue()];
         byte[] privateKey = new byte[sodium().crypto_box_secretkeybytes().intValue()];
@@ -377,7 +378,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoPublicKey(byte[] privateKey) throws SodiumLibraryException {
+    public static byte[] cryptoPublicKey(byte[] privateKey) {
         byte[] publicKey = new byte[sodium().crypto_box_publickeybytes().intValue()];
         int rc = sodium().crypto_scalarmult_base(publicKey, privateKey);
         if(rc != 0) {
@@ -386,6 +387,78 @@ public class SodiumLibrary {
             return publicKey;
         }
     }
+
+
+    public static SodiumKeyPair cryptoKxKeyPair() {
+        byte[] publicKey = new byte[sodium().crypto_kx_publickeybytes().intValue()];
+        byte[] privateKey = new byte[sodium().crypto_kx_secretkeybytes().intValue()];
+
+        int rc = sodium().crypto_kx_keypair(publicKey, privateKey);
+        if(rc != 0) {
+            throw new SodiumLibraryException("libsodium crypto_kx_keypair() failed, returned " + rc + ", expected 0");
+        } else {
+            return new SodiumKeyPair(publicKey, privateKey);
+        }
+    }
+
+    public static SodiumKeyPair cryptoKxSeedKeyPair(byte[] seed) {
+        byte[] publicKey = new byte[sodium().crypto_kx_publickeybytes().intValue()];
+        byte[] privateKey = new byte[sodium().crypto_kx_secretkeybytes().intValue()];
+        int seedLen = sodium().crypto_kx_seedbytes().intValue();
+
+        if(seed.length != seedLen)
+            throw new SodiumLibraryException("Expected seed size " + seedLen + " bytes for cryptoKxSeedKeyPair seed, but passed " + seed.length + " bytes");
+
+        int rc = sodium().crypto_kx_seed_keypair(publicKey, privateKey, seed);
+        if(rc != 0) {
+            throw new SodiumLibraryException("libsodium crypto_kx_seed_keypair() failed, returned " + rc + ", expected 0");
+        } else {
+            return new SodiumKeyPair(publicKey, privateKey);
+        }
+    }
+
+    public static SodiumKxKeyPair cryptoKxClientSessionKeys(byte[] clientPublicKey, byte[] clientSecretKey, byte[] serverPublicKey) {
+        byte[] receivingKey = new byte[sodium().crypto_kx_sessionkeybytes().intValue()];
+        byte[] transmittingKey = new byte[sodium().crypto_kx_sessionkeybytes().intValue()];
+        int publicKeyLen = sodium().crypto_kx_publickeybytes().intValue();
+        int secretKeyLen = sodium().crypto_kx_secretkeybytes().intValue();
+
+        if(clientPublicKey.length != publicKeyLen)
+            throw new SodiumLibraryException("Expected key size " + publicKeyLen + " bytes for cryptoKxClientSessionKeys clientPublicKey, but passed " + clientPublicKey.length + " bytes");
+        if(clientSecretKey.length != secretKeyLen)
+            throw new SodiumLibraryException("Expected key size " + secretKeyLen + " bytes for cryptoKxClientSessionKeys clientSecretKey, but passed " + clientSecretKey.length + " bytes");
+        if(serverPublicKey.length != publicKeyLen)
+            throw new SodiumLibraryException("Expected key size " + publicKeyLen + " bytes for cryptoKxClientSessionKeys serverPublicKey, but passed " + serverPublicKey.length + " bytes");
+
+        int rc = sodium().crypto_kx_client_session_keys(receivingKey, transmittingKey, clientPublicKey, clientSecretKey, serverPublicKey);
+        if(rc != 0) {
+            throw new SodiumLibraryException("libsodium crypto_kx_client_session_keys() failed, returned " + rc + ", expected 0");
+        } else {
+            return new SodiumKxKeyPair(receivingKey, transmittingKey);
+        }
+    }
+
+    public static SodiumKxKeyPair cryptoKxServerSessionKeys(byte[] serverPublicKey, byte[] serverSecretKey, byte[] clientPublicKey) {
+        byte[] receivingKey = new byte[sodium().crypto_kx_sessionkeybytes().intValue()];
+        byte[] transmittingKey = new byte[sodium().crypto_kx_sessionkeybytes().intValue()];
+        int publicKeyLen = sodium().crypto_kx_publickeybytes().intValue();
+        int secretKeyLen = sodium().crypto_kx_secretkeybytes().intValue();
+
+        if(serverPublicKey.length != publicKeyLen)
+            throw new SodiumLibraryException("Expected key size " + publicKeyLen + " bytes for cryptoKxServerSessionKeys serverPublicKey, but passed " + serverPublicKey.length + " bytes");
+        if(serverSecretKey.length != secretKeyLen)
+            throw new SodiumLibraryException("Expected key size " + secretKeyLen + " bytes for cryptoKxServerSessionKeys serverSecretKey, but passed " + serverSecretKey.length + " bytes");
+        if(clientPublicKey.length != publicKeyLen)
+            throw new SodiumLibraryException("Expected key size " + publicKeyLen + " bytes for cryptoKxServerSessionKeys clientPublicKey, but passed " + clientPublicKey.length + " bytes");
+
+        int rc = sodium().crypto_kx_server_session_keys(receivingKey, transmittingKey, serverPublicKey, serverSecretKey, clientPublicKey);
+        if(rc != 0) {
+            throw new SodiumLibraryException("libsodium crypto_kx_server_session_keys() failed, returned " + rc + ", expected 0");
+        } else {
+            return new SodiumKxKeyPair(receivingKey, transmittingKey);
+        }
+    }
+
 
     public static NativeLong cryptoBoxNonceBytes() {
         return sodium().crypto_box_noncebytes();
@@ -409,6 +482,22 @@ public class SodiumLibrary {
 
     public static NativeLong cryptoBoxSealBytes() {
         return sodium().crypto_box_sealbytes();
+    }
+
+    public static NativeLong crytoKxSeedBytes() {
+        return sodium().crypto_kx_seedbytes();
+    }
+
+    public static NativeLong crytoKxPublicKeyBytes() {
+        return sodium().crypto_kx_publickeybytes();
+    }
+
+    public static NativeLong crytoKxSecretKeyBytes() {
+        return sodium().crypto_kx_secretkeybytes();
+    }
+
+    public static NativeLong cryptoKxSessionKeyBytes() {
+        return sodium().crypto_kx_sessionkeybytes();
     }
 
     public static NativeLong cryptoSecretBoxKeyBytes() {
@@ -455,7 +544,7 @@ public class SodiumLibrary {
         return sodium().crypto_pwhash_scryptsalsa208sha256_saltbytes();
     }
 
-    public static byte[] cryptoBoxEasy(byte[] message, byte[] nonce, byte[] publicKey, byte[] privateKey) throws SodiumLibraryException {
+    public static byte[] cryptoBoxEasy(byte[] message, byte[] nonce, byte[] publicKey, byte[] privateKey) {
         NativeLong nonce_len = sodium().crypto_box_noncebytes();
         if(nonce.length != nonce_len.intValue()) {
             throw new SodiumLibraryException("nonce is " + nonce.length + "bytes, it must be" + nonce_len + " bytes");
@@ -470,7 +559,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoBoxOpenEasy(byte[] cipherText, byte[] nonce, byte[] publicKey, byte[] privateKey) throws SodiumLibraryException {
+    public static byte[] cryptoBoxOpenEasy(byte[] cipherText, byte[] nonce, byte[] publicKey, byte[] privateKey) {
         NativeLong nonce_len = sodium().crypto_box_noncebytes();
         if(nonce.length != nonce_len.intValue()) {
             throw new SodiumLibraryException("nonce is " + nonce.length + "bytes, it must be" + nonce_len + " bytes");
@@ -485,7 +574,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoBoxSeal(byte[] message, byte[] recipientPublicKey) throws SodiumLibraryException {
+    public static byte[] cryptoBoxSeal(byte[] message, byte[] recipientPublicKey) {
         logger.info("message len: " + message.length);
         byte[] cipherText = new byte[sodium().crypto_box_sealbytes().intValue() + message.length];
         int rc = sodium().crypto_box_seal(cipherText, message, (long)message.length, recipientPublicKey);
@@ -496,7 +585,7 @@ public class SodiumLibrary {
         }
     }
 
-    public static byte[] cryptoBoxSealOpen(byte[] cipherText, byte[] pk, byte[] sk) throws SodiumLibraryException {
+    public static byte[] cryptoBoxSealOpen(byte[] cipherText, byte[] pk, byte[] sk) {
         byte[] decrypted = new byte[cipherText.length - sodium().crypto_box_sealbytes().intValue()];
         int rc = sodium().crypto_box_seal_open(decrypted, cipherText, (long)cipherText.length, pk, sk);
         if(rc != 0) {
@@ -557,6 +646,14 @@ public class SodiumLibrary {
 
         NativeLong crypto_auth_keybytes();
 
+        NativeLong crypto_kx_publickeybytes();
+
+        NativeLong crypto_kx_secretkeybytes();
+
+        NativeLong crypto_kx_seedbytes();
+
+        NativeLong crypto_kx_sessionkeybytes();
+
         int crypto_pwhash(byte[] var1, long var2, byte[] var4, long var5, byte[] var7, long var8, NativeLong var10, int var11);
 
         int crypto_pwhash_scryptsalsa208sha256(byte[] var1, long var2, byte[] var4, long var5, byte[] var7, long var8, NativeLong var10);
@@ -592,6 +689,14 @@ public class SodiumLibrary {
         int crypto_box_keypair(byte[] var1, byte[] var2);
 
         int crypto_scalarmult_base(byte[] var1, byte[] var2);
+
+        int crypto_kx_keypair(byte[] pk, byte[] sk);
+
+        int crypto_kx_seed_keypair(byte[] pk, byte[] sk, byte[] seed);
+
+        int crypto_kx_client_session_keys(byte[] rx, byte[] tx, byte[] client_pk, byte[] client_sk, byte[] server_pk);
+
+        int crypto_kx_server_session_keys(byte[] rx, byte[] tx, byte[] server_pk, byte[] server_sk, byte[] client_pk);
 
         int crypto_box_easy(byte[] var1, byte[] var2, long var3, byte[] var5, byte[] var6, byte[] var7);
 

@@ -15,7 +15,7 @@ import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.parsing.IrcFormatter;
 import com.muquit.libsodiumjna.SodiumKeyPair;
 import com.liph.chatterade.encryption.SodiumLibrary;
-import com.muquit.libsodiumjna.exceptions.SodiumLibraryException;
+import com.liph.chatterade.encryption.exceptions.SodiumLibraryException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -87,7 +87,7 @@ public class Main {
     }
 
 
-    public static void timing() throws SodiumLibraryException {
+    public static void timing() {
         EncryptionService encryptionService = EncryptionService.getInstance();
 
         SodiumKeyPair key = SodiumLibrary.cryptoBoxKeyPair();

@@ -131,7 +131,7 @@ public class ClientMessageProcessor {
     public void processConnect(ConnectMessage message, ClientUser sender, ClientConnection clientConnection) {
         try {
             Socket socket = new Socket(message.getServer(), message.getPort().orElse(6667));
-            ServerConnection serverConnection = new ServerConnection(application, socket);
+            ServerConnection serverConnection = new ServerConnection(application, socket, true);
             new Thread(serverConnection).start();
         } catch(Exception e) {
             e.printStackTrace();
