@@ -15,6 +15,8 @@ import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.messaging.enums.TargetType;
 import com.liph.chatterade.parsing.IrcFormatter;
 import com.liph.chatterade.parsing.models.Target;
+import com.liph.chatterade.serialization.Serializer;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -28,6 +30,7 @@ public class ClientUserManager {
 
     private final Application application;
     private final IrcFormatter ircFormatter;
+    private final Serializer serializer;
     private final Map<ByteArray, ClientUser> clientUsersByPublicKey;
     private final Map<ByteArray, ClientUser> clientUsersByPasswordKey;
 
@@ -35,6 +38,7 @@ public class ClientUserManager {
     public ClientUserManager(Application application) {
         this.application = application;
         this.ircFormatter = application.getIrcFormatter();
+        this.serializer = application.getSerializer();
         this.clientUsersByPublicKey = new ConcurrentHashMap<>();
         this.clientUsersByPasswordKey = new HashMap<>();
     }
@@ -53,8 +57,7 @@ public class ClientUserManager {
             user = existingUser.get();
             user.addConnection(connection);
         } else {
-            KeyPair keyPair = EncryptionService.getInstance().generateKeyPair();
-            user = new ClientUser(nick, passwordKey, keyPair, connection);
+            user = serializer.load(passwordKey, keyPair -> new ClientUser(nick, passwordKey, keyPair, connection));
 
             clientUsersByPublicKey.put(user.getPublicKey().getSigningKey(), user);
             passwordKey.ifPresent(k -> clientUsersByPasswordKey.put(k, user));

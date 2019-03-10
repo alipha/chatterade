@@ -14,6 +14,11 @@ import com.liph.chatterade.encryption.models.SodiumKxKeyPair;
 import com.muquit.libsodiumjna.SodiumKeyPair;
 import com.sun.jna.NativeLong;
 import com.sun.jna.Platform;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -56,6 +61,10 @@ public class EncryptionService {
     }
 
 
+    public byte[] randomNonce() {
+        return SodiumLibrary.randomBytes(NONCE_SIZE);
+    }
+
     public KeyPair generateKeyPair() {
         return new KeyPair(SodiumLibrary.cryptoSignKeyPair());
     }
@@ -79,6 +88,10 @@ public class EncryptionService {
 
     public ByteArray getMessageHash(byte[] message) {
         return new ByteArray(SodiumLibrary.cryptoGenerichash(message, 16, null));
+    }
+
+    public String getFilenameHash(byte[] message) {
+        return getMessageHash(message).toString();
     }
 
 
@@ -169,6 +182,30 @@ public class EncryptionService {
             e.printStackTrace();
             return Optional.empty();
         }
+    }
+
+
+    public void saveEncryptedToFile(String filename, byte[] contents, byte[] key) throws IOException {
+        Nonce nonce = Nonce.random();
+        byte[] encrypted = encryptMessage(contents, nonce, key);
+
+        FileOutputStream file = new FileOutputStream(filename);
+        file.write(nonce.getBytes());
+        file.write(encrypted);
+        file.close();
+
+        file = new FileOutputStream(filename + ".txt");
+        file.write(contents);
+        file.close();
+    }
+
+
+    public byte[] decryptFile(String filename, byte[] key) throws IOException {
+        byte[] fileBytes = Files.readAllBytes(new File(filename).toPath());
+        Nonce nonce = new Nonce(Arrays.copyOf(fileBytes, EncryptionService.NONCE_SIZE));
+        byte[] encryptedBytes = Arrays.copyOfRange(fileBytes, EncryptionService.NONCE_SIZE, fileBytes.length);
+
+        return decryptMessage(encryptedBytes, nonce, key);
     }
 
 

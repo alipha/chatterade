@@ -18,6 +18,8 @@ import com.liph.chatterade.encryption.models.DecryptedMessage;
 import com.liph.chatterade.messaging.enums.MessageType;
 import com.liph.chatterade.parsing.IrcFormatter;
 import com.liph.chatterade.parsing.enums.IrcMessageValidationMap;
+import com.liph.chatterade.serialization.Serializer;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +36,7 @@ public class Application {
 
     private final EncryptionService encryptionService;
     private final IrcFormatter ircFormatter;
+    private final Serializer serializer;
     private final Set<ServerConnection> serverConnections;
 
     private RecentMessageManager recentMessageManager;
@@ -42,13 +45,15 @@ public class Application {
     private ServerMessageProcessor serverMessageProcessor;
 
 
-    public Application(String serverName, String serverVersion, EncryptionService encryptionService, IrcFormatter ircFormatter) {
+    public Application(String serverName, String serverVersion, EncryptionService encryptionService,
+                       IrcFormatter ircFormatter, Serializer serializer) {
         this.startupTime = Instant.now();
         this.serverName = serverName;
         this.serverVersion = serverVersion;
 
         this.encryptionService = encryptionService;
         this.ircFormatter = ircFormatter;
+        this.serializer = serializer;
         this.serverConnections = ConcurrentHashMap.newKeySet();
     }
 
@@ -92,6 +97,10 @@ public class Application {
 
     public IrcFormatter getIrcFormatter() {
         return ircFormatter;
+    }
+
+    public Serializer getSerializer() {
+        return serializer;
     }
 
     public RecentMessageManager getRecentMessageManager() {

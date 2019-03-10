@@ -5,16 +5,12 @@ import static java.lang.String.format;
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.Contact;
 import com.liph.chatterade.common.QuadConsumer;
-import com.liph.chatterade.common.QuadConsumer;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.messaging.ClientMessageProcessor;
-import com.liph.chatterade.messaging.MessageProcessor;
 import com.liph.chatterade.common.EnumHelper;
 import com.liph.chatterade.messaging.ServerMessageProcessor;
 import com.liph.chatterade.messaging.models.Message;
-import com.sun.deploy.util.SessionState.Client;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 
 
 public enum MessageActionMap {

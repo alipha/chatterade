@@ -9,10 +9,7 @@ import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.encryption.models.PrivateKey;
 import com.liph.chatterade.encryption.models.PublicKey;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
@@ -21,9 +18,9 @@ public class ClientUser {
 
     private final Set<ClientConnection> connections;
     private final KeyPair keyPair;
+    private final Optional<ByteArray> passwordKey;
 
     private String nick;
-    private Optional<ByteArray> passwordKey;
     private Optional<String> username = Optional.empty();
     private Optional<String> realName = Optional.empty();
 
@@ -38,7 +35,7 @@ public class ClientUser {
         this.connections = ConcurrentHashMap.newKeySet();
         this.keyPair = keyPair;
         this.contactsByNick = new HashMap<>();//new ConcurrentHashMap<>();
-        this.contactsByPublicKey = new HashMap<>(); //new ConcurrentHashMap<>();
+        this.contactsByPublicKey = new ConcurrentHashMap<>();
 
         this.connections.add(connection);
     }
@@ -95,10 +92,6 @@ public class ClientUser {
 
     public Optional<ByteArray> getPasswordKey() {
         return passwordKey;
-    }
-
-    public void setPasswordKey(Optional<ByteArray> passwordKey) {
-        this.passwordKey = passwordKey;
     }
 
     public Optional<String> getUsername() {
@@ -229,7 +222,11 @@ public class ClientUser {
         return Optional.ofNullable(contactsByNick.get(nick.toLowerCase()));
     }
 
-    public synchronized Optional<Contact> getContactByPublicKey(ByteArray key) {
+    public Optional<Contact> getContactByPublicKey(ByteArray key) {
         return Optional.ofNullable(contactsByPublicKey.get(key));
+    }
+
+    public Collection<Contact> getContacts() {
+        return contactsByPublicKey.values();
     }
 }

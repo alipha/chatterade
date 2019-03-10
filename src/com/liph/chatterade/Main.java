@@ -15,6 +15,7 @@ import com.liph.chatterade.connection.ConnectionListener;
 import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.parsing.IrcFormatter;
+import com.liph.chatterade.serialization.Serializer;
 import com.muquit.libsodiumjna.SodiumKeyPair;
 import com.liph.chatterade.encryption.SodiumLibrary;
 import com.liph.chatterade.encryption.exceptions.SodiumLibraryException;
@@ -24,11 +25,11 @@ import java.util.List;
 
 public class Main {
 
-    public static void main2(String[] args) {
-        hashTiming();
+    public static void main(String[] args) {
+        iniTest();
     }
 
-    public static void main(String[] args) {
+    public static void main2(String[] args) {
         int clientPort = 6667;
         int serverPort = 6668;
         int clientTlsPort = 7000;
@@ -63,7 +64,8 @@ public class Main {
         int serverPort = clientPort + 1;
         */
 
-        Application application = new Application("alipha.ddns.net", "0.1", EncryptionService.getInstance(), new IrcFormatter());
+        Application application = new Application("alipha.ddns.net", "0.1",
+                EncryptionService.getInstance(), new IrcFormatter(), new Serializer());
 
         List<ConnectionListener> connectionListeners = Arrays.asList(
             new ConnectionListener(application, clientPort, ClientConnection::new, false),
@@ -198,5 +200,10 @@ public class Main {
 
         countPerSec = 200000*1000 / (end - start);
         System.out.println(format(" Short hashes: %d/sec", countPerSec));
+    }
+
+
+    private static void iniTest() {
+
     }
 }

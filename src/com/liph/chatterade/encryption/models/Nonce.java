@@ -11,6 +11,10 @@ public class Nonce implements Comparable<Nonce> {
     private byte[] bytes;
 
 
+    public static Nonce random() {
+        return new Nonce(EncryptionService.getInstance().randomNonce());
+    }
+
     public Nonce() {
         this.bytes = new byte[EncryptionService.NONCE_SIZE];
     }

@@ -45,5 +45,6 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="org.ini4j:ini4j:0.5.4" level="project" />
   </component>
 </module>
