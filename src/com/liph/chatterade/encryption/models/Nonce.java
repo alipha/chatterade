@@ -2,6 +2,7 @@ package com.liph.chatterade.encryption.models;
 
 
 import com.liph.chatterade.encryption.EncryptionService;
+import java.security.MessageDigest;
 import java.util.Arrays;
 
 
@@ -50,7 +51,7 @@ public class Nonce implements Comparable<Nonce> {
 
         Nonce nonce = (Nonce) o;
 
-        return Arrays.equals(bytes, nonce.bytes);
+        return MessageDigest.isEqual(bytes, nonce.bytes);
     }
 
     @Override

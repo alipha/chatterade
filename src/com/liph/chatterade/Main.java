@@ -3,7 +3,9 @@ package com.liph.chatterade;
 import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
+import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.encryption.models.KeyPair;
+import com.liph.chatterade.encryption.models.Nonce;
 import com.liph.chatterade.messaging.ClientMessageProcessor;
 import com.liph.chatterade.chat.ClientUserManager;
 import com.liph.chatterade.messaging.RecentMessageManager;
@@ -21,6 +23,10 @@ import java.util.List;
 
 
 public class Main {
+
+    public static void main2(String[] args) {
+        hashTiming();
+    }
 
     public static void main(String[] args) {
         int clientPort = 6667;
@@ -87,6 +93,72 @@ public class Main {
     }
 
 
+    public static void hashTiming() {
+        int iterations = 1000000;
+
+        EncryptionService.getInstance();
+        byte[] input = SodiumLibrary.randomBytes(32);
+        byte[] key = SodiumLibrary.cryptoShortHashKeygen();
+        byte[] hash = new byte[16];
+
+        long start = System.currentTimeMillis();
+        for(int i = 0; i < iterations; i++)
+            SodiumLibrary.cryptoShortHash(input, key);
+        long end = System.currentTimeMillis();
+
+        long countPerSec = iterations*1000L / (end - start);
+        System.out.println(format("cryptoShortHash: %d/sec", countPerSec));
+
+
+        Nonce n = new Nonce();
+        start = System.currentTimeMillis();
+        for(int i = 0; i < iterations; i++)
+            n.increment();
+        end = System.currentTimeMillis();
+
+        countPerSec = iterations*1000L / (end - start);
+        System.out.println(format("      increment: %d/sec", countPerSec));
+
+
+        input = n.getBytes();
+        start = System.currentTimeMillis();
+        for(int i = 0; i < iterations; i++)
+            SodiumLibrary.increment(input);
+        end = System.currentTimeMillis();
+
+        countPerSec = iterations*1000L / (end - start);
+        System.out.println(format("sodium_increment: %d/sec", countPerSec));
+
+/*
+        start = System.currentTimeMillis();
+        for(int i = 0; i < iterations; i++)
+            SodiumLibrary.cryptoGenerichash(input, 16, key);
+        end = System.currentTimeMillis();
+
+        countPerSec = iterations*1000L / (end - start);
+        System.out.println(format("cryptoGenericHash: %d/sec", countPerSec));
+
+
+        start = System.currentTimeMillis();
+        for(int i = 0; i < iterations; i++)
+            SodiumLibrary.increment(input);
+        end = System.currentTimeMillis();
+
+        countPerSec = iterations*1000L / (end - start);
+        System.out.println(format("increment: %d/sec", countPerSec));
+
+
+        start = System.currentTimeMillis();
+        for(int i = 0; i < iterations; i++)
+            SodiumLibrary.cryptoPwhashAlgArgon2id13();
+        end = System.currentTimeMillis();
+
+        countPerSec = iterations*1000L / (end - start);
+        System.out.println(format("cryptoPwhashAlgArgon2id13: %d/sec", countPerSec));
+        */
+    }
+
+
     public static void timing() {
         EncryptionService encryptionService = EncryptionService.getInstance();
 
@@ -126,7 +198,5 @@ public class Main {
 
         countPerSec = 200000*1000 / (end - start);
         System.out.println(format(" Short hashes: %d/sec", countPerSec));
-
-
     }
 }

@@ -88,7 +88,7 @@ public class SodiumLibrary {
     }
 
     public static byte[] cryptoSign(byte[] m, byte[] sk) {
-        byte[] sm = new byte[sodium().crypto_sign_bytes() + m.length];
+        byte[] sm = new byte[sodium().crypto_sign_bytes().intValue() + m.length];
         byte[] test = new byte[1];
         int rc = sodium().crypto_sign(sm, (long)test[0], m, (long)m.length, sk);
         if(rc != 0) {
@@ -110,7 +110,7 @@ public class SodiumLibrary {
     }
 
     public static byte[] cryptoSignDetached(byte[] msg, byte[] sk) {
-        byte[] sig = new byte[sodium().crypto_sign_ed25519_bytes()];
+        byte[] sig = new byte[sodium().crypto_sign_ed25519_bytes().intValue()];
         long[] siglen = new long[1];
         siglen[0] = sig.length;
 
@@ -124,8 +124,8 @@ public class SodiumLibrary {
 
     public static SodiumKeyPair cryptoSignKeyPair() {
         SodiumKeyPair kp = new SodiumKeyPair();
-        byte[] publicKey = new byte[(int)sodium().crypto_sign_publickeybytes()];
-        byte[] privateKey = new byte[(int)sodium().crypto_sign_secretkeybytes()];
+        byte[] publicKey = new byte[sodium().crypto_sign_publickeybytes().intValue()];
+        byte[] privateKey = new byte[sodium().crypto_sign_secretkeybytes().intValue()];
         int rc = sodium().crypto_sign_keypair(publicKey, privateKey);
         if(rc != 0) {
             throw new SodiumLibraryException("libsodium crypto_sign_keypair() failed, returned " + rc + ", expected 0");
@@ -179,6 +179,10 @@ public class SodiumLibrary {
         return buf;
     }
 
+    public static void increment(byte[] nonce) {
+        sodium().sodium_increment(nonce, new NativeLong(nonce.length));
+    }
+
     public static byte[] cryptoPwhash(byte[] passwd, byte[] salt, long opsLimit, NativeLong memLimit, int algorithm) {
         byte[] key = new byte[sodium().crypto_box_seedbytes().intValue()];
         logger.info(">>> NavtiveLong size: " + NativeLong.SIZE * 8 + " bits");
@@ -201,7 +205,7 @@ public class SodiumLibrary {
             logger.info(">>> opslimit: " + sodium().crypto_pwhash_opslimit_interactive());
             logger.info(">>> memlimit: " + sodium().crypto_pwhash_memlimit_interactive());
             logger.info(">>> alg: " + sodium().crypto_pwhash_alg_argon2id13());
-            int rc = sodium().crypto_pwhash(key, (long)key.length, passwd, (long)passwd.length, salt, sodium().crypto_pwhash_opslimit_interactive(), sodium().crypto_pwhash_memlimit_interactive(), sodium().crypto_pwhash_alg_argon2id13());
+            int rc = sodium().crypto_pwhash(key, (long)key.length, passwd, (long)passwd.length, salt, sodium().crypto_pwhash_opslimit_interactive().longValue(), sodium().crypto_pwhash_memlimit_interactive(), sodium().crypto_pwhash_alg_argon2id13());
             logger.info("crypto_pwhash returned: " + rc);
             if(rc != 0) {
                 throw new SodiumLibraryException("cryptoPwhashArgon2i libsodium crypto_pwhash failed, returned " + rc + ", expected 0");
@@ -216,8 +220,8 @@ public class SodiumLibrary {
     }
 
     public static String cryptoPwhashStr(byte[] password) {
-        byte[] hashedPassword = new byte[sodium().crypto_pwhash_strbytes()];
-        int rc = sodium().crypto_pwhash_str(hashedPassword, password, (long)password.length, sodium().crypto_pwhash_opslimit_interactive(), sodium().crypto_pwhash_memlimit_interactive());
+        byte[] hashedPassword = new byte[sodium().crypto_pwhash_strbytes().intValue()];
+        int rc = sodium().crypto_pwhash_str(hashedPassword, password, (long)password.length, sodium().crypto_pwhash_opslimit_interactive().longValue(), sodium().crypto_pwhash_memlimit_interactive());
         if(rc != 0) {
             throw new SodiumLibraryException("libsodium crypto_pwhash_str failed, returned " + rc + ", expected 0");
         } else {
@@ -238,7 +242,7 @@ public class SodiumLibrary {
             throw new SodiumLibraryException("salt is " + salt.length + ", it must be" + salt_length + " bytes");
         } else {
             byte[] key = new byte[sodium().crypto_box_seedbytes().intValue()];
-            int rc = sodium().crypto_pwhash_scryptsalsa208sha256(key, (long)key.length, passwd, (long)passwd.length, salt, sodium().crypto_pwhash_opslimit_interactive(), sodium().crypto_pwhash_memlimit_interactive());
+            int rc = sodium().crypto_pwhash_scryptsalsa208sha256(key, (long)key.length, passwd, (long)passwd.length, salt, sodium().crypto_pwhash_opslimit_interactive().longValue(), sodium().crypto_pwhash_memlimit_interactive());
             logger.info("crypto_pwhash_scryptsalsa208sha256 returned: " + rc);
             if(rc != 0) {
                 throw new SodiumLibraryException("libsodium crypto_pwhash_scryptsalsa208sha256() failed, returned " + rc + ", expected 0");
@@ -251,7 +255,7 @@ public class SodiumLibrary {
     public static byte[] cryptoPwhashScryptSalsa208Sha256(byte[] passwd, byte[] salt, Long opsLimit, NativeLong memLimit) {
         NativeLong salt_length = sodium().crypto_pwhash_scryptsalsa208sha256_saltbytes();
         if(salt.length != salt_length.intValue()) {
-            throw new SodiumLibraryException("salt is " + salt.length + ", it must be" + salt_length + " bytes");
+            throw new SodiumLibraryException("salt is " + salt.length + " bytes, it must be " + salt_length + " bytes");
         } else {
             byte[] key = new byte[sodium().crypto_box_seedbytes().intValue()];
             int rc = sodium().crypto_pwhash_scryptsalsa208sha256(key, (long)key.length, passwd, (long)passwd.length, salt, opsLimit.longValue(), memLimit);
@@ -261,6 +265,26 @@ public class SodiumLibrary {
             } else {
                 return key;
             }
+        }
+    }
+
+    public static byte[] cryptoShortHashKeygen() {
+        byte[] key = new byte[cryptoShortHashKeyBytes()];
+        sodium().crypto_shorthash_keygen(key);
+        return key;
+    }
+
+    public static byte[] cryptoShortHash(byte[] message, byte[] key) {
+        int keyLen = cryptoShortHashKeyBytes();
+        if(key.length != keyLen)
+            throw new SodiumLibraryException("key is " + key.length + " bytes, it must be " + keyLen + " bytes");
+
+        byte[] hash = new byte[cryptoShortHashBytes()];
+        int rc = sodium().crypto_shorthash(hash, message, message.length, key);
+        if(rc != 0) {
+            throw new SodiumLibraryException("libsodium crypto_shorthash() failed, returned " + rc + ", expected 0");
+        } else {
+            return hash;
         }
     }
 
@@ -513,7 +537,7 @@ public class SodiumLibrary {
     }
 
     public static int cryptoNumberSaltBytes() {
-        return sodium().crypto_pwhash_saltbytes();
+        return sodium().crypto_pwhash_saltbytes().intValue();
     }
 
     public static int cryptoPwhashAlgArgon2i13() {
@@ -529,19 +553,27 @@ public class SodiumLibrary {
     }
 
     public static int cryptoPwhashSaltBytes() {
-        return sodium().crypto_pwhash_saltbytes();
+        return sodium().crypto_pwhash_saltbytes().intValue();
     }
 
     public static long cryptoPwHashOpsLimitInteractive() {
-        return sodium().crypto_pwhash_opslimit_interactive();
+        return sodium().crypto_pwhash_opslimit_interactive().longValue();
     }
 
-    public static NativeLong cryptoPwHashMemLimitInterative() {
-        return sodium().crypto_pwhash_memlimit_interactive();
+    public static long cryptoPwHashMemLimitInterative() {
+        return sodium().crypto_pwhash_memlimit_interactive().longValue();
     }
 
-    public static NativeLong cryptoPwHashScryptSalsa208Sha256SaltBytes() {
-        return sodium().crypto_pwhash_scryptsalsa208sha256_saltbytes();
+    public static int cryptoPwHashScryptSalsa208Sha256SaltBytes() {
+        return sodium().crypto_pwhash_scryptsalsa208sha256_saltbytes().intValue();
+    }
+
+    public static int cryptoShortHashKeyBytes() {
+        return sodium().crypto_shorthash_keybytes().intValue();
+    }
+    
+    public static int cryptoShortHashBytes() {
+        return sodium().crypto_shorthash_bytes().intValue();
     }
 
     public static byte[] cryptoBoxEasy(byte[] message, byte[] nonce, byte[] publicKey, byte[] privateKey) {
@@ -606,29 +638,35 @@ public class SodiumLibrary {
 
         void randombytes_buf(byte[] var1, int var2);
 
+        void sodium_increment(byte[] n, NativeLong len);
+
         int crypto_pwhash_alg_argon2i13();
 
         int crypto_pwhash_alg_argon2id13();
 
         int crypto_pwhash_alg_default();
 
-        int crypto_pwhash_saltbytes();
+        NativeLong crypto_pwhash_saltbytes();
 
-        int crypto_pwhash_strbytes();
+        NativeLong crypto_pwhash_strbytes();
 
         Pointer crypto_pwhash_strprefix();
 
-        long crypto_pwhash_opslimit_interactive();
+        NativeLong crypto_pwhash_opslimit_interactive();
 
         NativeLong crypto_pwhash_memlimit_interactive();
 
-        long crypto_pwhash_opslimit_moderate();
+        NativeLong crypto_pwhash_opslimit_moderate();
 
         NativeLong crypto_pwhash_memlimit_moderate();
 
-        long crypto_pwhash_opslimit_sensitive();
+        NativeLong crypto_pwhash_opslimit_sensitive();
 
         NativeLong crypto_pwhash_memlimit_sensitive();
+
+        NativeLong crypto_shorthash_keybytes();
+
+        NativeLong crypto_shorthash_bytes();
 
         NativeLong crypto_box_seedbytes();
 
@@ -661,6 +699,10 @@ public class SodiumLibrary {
         int crypto_pwhash_str(byte[] var1, byte[] var2, long var3, long var5, NativeLong var7);
 
         int crypto_pwhash_str_verify(byte[] var1, byte[] var2, long var3);
+
+        void crypto_shorthash_keygen(byte[] key);
+
+        int crypto_shorthash(byte[] out, byte[] in, long inlen, byte[] k);
 
         NativeLong crypto_pwhash_scryptsalsa208sha256_saltbytes();
 
@@ -702,15 +744,15 @@ public class SodiumLibrary {
 
         int crypto_box_open_easy(byte[] var1, byte[] var2, long var3, byte[] var5, byte[] var6, byte[] var7);
 
-        long crypto_sign_secretkeybytes();
+        NativeLong crypto_sign_secretkeybytes();
 
-        long crypto_sign_publickeybytes();
+        NativeLong crypto_sign_publickeybytes();
 
         int crypto_sign_keypair(byte[] var1, byte[] var2);
 
-        int crypto_sign_ed25519_bytes();
+        NativeLong crypto_sign_ed25519_bytes();
 
-        int crypto_sign_bytes();
+        NativeLong crypto_sign_bytes();
 
         int crypto_sign_detached(byte[] var1, long[] var2, byte[] var4, long var5, byte[] var7);
 

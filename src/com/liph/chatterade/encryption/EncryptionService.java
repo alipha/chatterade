@@ -83,7 +83,7 @@ public class EncryptionService {
 
 
     public int getHashCode(byte[] bytes) {
-        byte[] hash = SodiumLibrary.cryptoGenerichash(bytes, 32, hashCodeSalt);
+        byte[] hash = SodiumLibrary.cryptoGenerichash(bytes, 16, hashCodeSalt);
         return (hash[0] & 0xff) | ((hash[1] & 0xff) << 8) | ((hash[2] & 0xff) << 16) | ((hash[3] & 0xff) << 24);
     }
 
