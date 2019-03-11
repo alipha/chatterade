@@ -3,6 +3,7 @@ package com.liph.chatterade.chat;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
+import com.liph.chatterade.common.LockManager;
 import com.liph.chatterade.encryption.models.PublicKey;
 import com.liph.chatterade.messaging.ClientMessageProcessor;
 import com.liph.chatterade.messaging.RecentMessageManager;
@@ -37,6 +38,7 @@ public class Application {
     private final EncryptionService encryptionService;
     private final IrcFormatter ircFormatter;
     private final Serializer serializer;
+    private final LockManager lockManager;
     private final Set<ServerConnection> serverConnections;
 
     private RecentMessageManager recentMessageManager;
@@ -46,7 +48,7 @@ public class Application {
 
 
     public Application(String serverName, String serverVersion, EncryptionService encryptionService,
-                       IrcFormatter ircFormatter, Serializer serializer) {
+                       IrcFormatter ircFormatter, Serializer serializer, LockManager lockManager) {
         this.startupTime = Instant.now();
         this.serverName = serverName;
         this.serverVersion = serverVersion;
@@ -54,6 +56,7 @@ public class Application {
         this.encryptionService = encryptionService;
         this.ircFormatter = ircFormatter;
         this.serializer = serializer;
+        this.lockManager = lockManager;
         this.serverConnections = ConcurrentHashMap.newKeySet();
     }
 
@@ -101,6 +104,10 @@ public class Application {
 
     public Serializer getSerializer() {
         return serializer;
+    }
+
+    public LockManager getLockManager() {
+        return lockManager;
     }
 
     public RecentMessageManager getRecentMessageManager() {

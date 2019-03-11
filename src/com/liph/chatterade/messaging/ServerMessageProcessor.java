@@ -59,7 +59,7 @@ public class ServerMessageProcessor {
         if(result.getClientUser().map(t -> !t.equals(recipient)).orElse(false))
             return;
 
-        Optional<String> previousNick = recipient.addOrUpdateContact(sender);
+        Optional<String> previousNick = application.getClientUserManager().addOrUpdateContact(recipient, sender);
         previousNick.ifPresent(previous -> application.sendNickChange(recipient, previous, sender.getPublicKey(), sender.getNick().get()));
 
         recipient.sendMessage(sender, MessageType.PRIVMSG.getIrcCommand(), format(":%s", message.getText()));

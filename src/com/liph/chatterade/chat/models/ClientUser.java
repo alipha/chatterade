@@ -134,7 +134,7 @@ public class ClientUser {
     }
 
     // TODO: remove Optional<String> return?
-    public synchronized Optional<String> addOrUpdateContact(Optional<String> nick, PublicKey publicKey) {
+    private synchronized Optional<String> addOrUpdateContact(Optional<String> nick, PublicKey publicKey) {
         Optional<Contact> contactByNick = nick.flatMap(this::getContactByNick);
         Optional<Contact> contactByKey = getContactByPublicKey(publicKey.getSigningKey());
 

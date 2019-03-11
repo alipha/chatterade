@@ -3,6 +3,7 @@ package com.liph.chatterade.serialization;
 import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.Contact;
 import com.liph.chatterade.common.ByteArray;
+import com.liph.chatterade.common.LockManager;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.encryption.models.PrivateKey;
@@ -10,7 +11,10 @@ import com.liph.chatterade.encryption.models.PublicKey;
 import org.ini4j.Ini;
 
 import java.io.*;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import static java.lang.String.format;
@@ -18,7 +22,53 @@ import static java.lang.String.format;
 
 public class Serializer {
 
-    public void save(ClientUser user) throws IOException {
+    private final LockManager lockManager;
+    private final Set<ByteArray> passwordKeys;
+
+
+    public Serializer(LockManager lockManager) {
+        this.lockManager = lockManager;
+        this.passwordKeys = ConcurrentHashMap.newKeySet();
+    }
+
+
+    public void delayedSave(ClientUser user) {
+        if(!user.getPasswordKey().isPresent())
+            return;
+
+        ByteArray passwordKey = user.getPasswordKey().get();
+        if(!passwordKeys.add(passwordKey))
+            return;
+
+        new Thread(() -> {
+            try {
+                Thread.sleep(120 * 1000);
+                passwordKeys.remove(passwordKey);
+                save(user);
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+
+    public void save(ClientUser user) {
+        if(!user.getPasswordKey().isPresent())
+            return;
+
+        ByteArray passwordKey = user.getPasswordKey().get();
+        try {
+            synchronized (lockManager.get(passwordKey)) {
+                doSave(user);
+            }
+        } catch(IOException e) {
+            e.printStackTrace();
+        } finally {
+            lockManager.release(passwordKey);
+        }
+    }
+
+    private void doSave(ClientUser user) throws IOException {
         if(!user.getPasswordKey().isPresent())
             return;
 

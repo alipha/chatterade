@@ -7,6 +7,7 @@ import com.liph.chatterade.chat.models.ClientUser;
 import com.liph.chatterade.chat.models.Contact;
 import com.liph.chatterade.chat.models.ResolveTargetResult;
 import com.liph.chatterade.common.ByteArray;
+import com.liph.chatterade.common.LockManager;
 import com.liph.chatterade.connection.ClientConnection;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.encryption.models.KeyPair;
@@ -31,6 +32,7 @@ public class ClientUserManager {
     private final Application application;
     private final IrcFormatter ircFormatter;
     private final Serializer serializer;
+    private final LockManager lockManager;
     private final Map<ByteArray, ClientUser> clientUsersByPublicKey;
     private final Map<ByteArray, ClientUser> clientUsersByPasswordKey;
 
@@ -39,8 +41,9 @@ public class ClientUserManager {
         this.application = application;
         this.ircFormatter = application.getIrcFormatter();
         this.serializer = application.getSerializer();
+        this.lockManager = application.getLockManager();
         this.clientUsersByPublicKey = new ConcurrentHashMap<>();
-        this.clientUsersByPasswordKey = new HashMap<>();
+        this.clientUsersByPasswordKey = new ConcurrentHashMap<>();
     }
 
 
@@ -49,7 +52,20 @@ public class ClientUserManager {
     }
 
 
-    public synchronized ClientUser addUser(String nick, Optional<ByteArray> passwordKey, ClientConnection connection) {
+    public ClientUser addUser(String nick, Optional<ByteArray> passwordKey, ClientConnection connection) {
+        if(!passwordKey.isPresent())
+            return doAddUser(nick, passwordKey, connection);
+
+        synchronized (lockManager.get(passwordKey.get())) {
+            try {
+                return doAddUser(nick, passwordKey, connection);
+            } finally {
+                lockManager.release(passwordKey.get());
+            }
+        }
+    }
+
+    private ClientUser doAddUser(String nick, Optional<ByteArray> passwordKey, ClientConnection connection) {
         Optional<ClientUser> existingUser = passwordKey.flatMap(k -> Optional.ofNullable(clientUsersByPasswordKey.get(k)));
         ClientUser user;
 
@@ -65,6 +81,14 @@ public class ClientUserManager {
 
         return user;
     }
+
+
+    public Optional<String> addOrUpdateContact(ClientUser user, Contact contact) {
+        Optional<String> previousNick = user.addOrUpdateContact(contact);
+        serializer.delayedSave(user);
+        return previousNick;
+    }
+
 
     public void removeUser(ClientUser clientUser) {
         /*
@@ -99,9 +123,9 @@ public class ClientUserManager {
             }
 
             if(targetClientUser.isPresent())
-                sender.get().addOrUpdateContact(targetClientUser.get().asContact());
+                addOrUpdateContact(sender.get(), targetClientUser.get().asContact());
             else if(targetRemoteUser.isPresent() && targetRemoteUser.get().getNick().isPresent())
-                sender.get().addOrUpdateContact(targetRemoteUser.get());
+                addOrUpdateContact(sender.get(), targetRemoteUser.get());
         }
 
         if(targetClientUser.isPresent())

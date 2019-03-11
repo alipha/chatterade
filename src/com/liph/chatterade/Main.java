@@ -4,6 +4,7 @@ import static java.lang.String.format;
 
 import com.liph.chatterade.chat.Application;
 import com.liph.chatterade.common.ByteArray;
+import com.liph.chatterade.common.LockManager;
 import com.liph.chatterade.encryption.models.KeyPair;
 import com.liph.chatterade.encryption.models.Nonce;
 import com.liph.chatterade.messaging.ClientMessageProcessor;
@@ -25,11 +26,11 @@ import java.util.List;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main2(String[] args) {
         iniTest();
     }
 
-    public static void main2(String[] args) {
+    public static void main(String[] args) {
         int clientPort = 6667;
         int serverPort = 6668;
         int clientTlsPort = 7000;
@@ -64,8 +65,11 @@ public class Main {
         int serverPort = clientPort + 1;
         */
 
+        LockManager lockManager = new LockManager();
+        Serializer serializer = new Serializer(lockManager);
+
         Application application = new Application("alipha.ddns.net", "0.1",
-                EncryptionService.getInstance(), new IrcFormatter(), new Serializer());
+                EncryptionService.getInstance(), new IrcFormatter(), serializer, lockManager);
 
         List<ConnectionListener> connectionListeners = Arrays.asList(
             new ConnectionListener(application, clientPort, ClientConnection::new, false),

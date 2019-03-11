@@ -83,7 +83,7 @@ public class ClientMessageProcessor {
             }
 
 
-            Optional<String> previousNick = target.addOrUpdateContact(sender.asContact());
+            Optional<String> previousNick = application.getClientUserManager().addOrUpdateContact(target, sender.asContact());
             previousNick.ifPresent(previous -> application.sendNickChange(target, previous, sender.getPublicKey(), sender.getNick()));
 
             String senderName = application.getIrcFormatter().getFullyQualifiedName(sender);
