@@ -1,12 +1,7 @@
 package com.liph.chatterade;
 
-import static java.lang.String.format;
-
 import com.liph.chatterade.chat.Application;
-import com.liph.chatterade.common.ByteArray;
 import com.liph.chatterade.common.LockManager;
-import com.liph.chatterade.encryption.models.KeyPair;
-import com.liph.chatterade.encryption.models.Nonce;
 import com.liph.chatterade.messaging.ClientMessageProcessor;
 import com.liph.chatterade.chat.ClientUserManager;
 import com.liph.chatterade.messaging.RecentMessageManager;
@@ -17,9 +12,6 @@ import com.liph.chatterade.connection.ServerConnection;
 import com.liph.chatterade.encryption.EncryptionService;
 import com.liph.chatterade.parsing.IrcFormatter;
 import com.liph.chatterade.serialization.Serializer;
-import com.muquit.libsodiumjna.SodiumKeyPair;
-import com.liph.chatterade.encryption.SodiumLibrary;
-import com.liph.chatterade.encryption.exceptions.SodiumLibraryException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -27,7 +19,8 @@ import java.util.List;
 public class Main {
 
     public static void main2(String[] args) {
-        iniTest();
+        Playground.hashMapTest();
+        //iniTest();
     }
 
     public static void main(String[] args) {
@@ -83,131 +76,5 @@ public class Main {
             new ClientMessageProcessor(application),
             new ServerMessageProcessor(application),
             connectionListeners);
-    }
-
-
-    public static void passwordTiming(String[] args) {
-        EncryptionService encryptionService = EncryptionService.getInstance();
-        long start = System.currentTimeMillis();
-
-        for(int i = 0; i < 1000; i++) {
-            encryptionService.deriveKey("Kevin", "Password");
-        }
-
-        long end = System.currentTimeMillis();
-        System.out.println(format("%.2f ms", (end - start) / 100.0));
-    }
-
-
-    public static void hashTiming() {
-        int iterations = 1000000;
-
-        EncryptionService.getInstance();
-        byte[] input = SodiumLibrary.randomBytes(32);
-        byte[] key = SodiumLibrary.cryptoShortHashKeygen();
-        byte[] hash = new byte[16];
-
-        long start = System.currentTimeMillis();
-        for(int i = 0; i < iterations; i++)
-            SodiumLibrary.cryptoShortHash(input, key);
-        long end = System.currentTimeMillis();
-
-        long countPerSec = iterations*1000L / (end - start);
-        System.out.println(format("cryptoShortHash: %d/sec", countPerSec));
-
-
-        Nonce n = new Nonce();
-        start = System.currentTimeMillis();
-        for(int i = 0; i < iterations; i++)
-            n.increment();
-        end = System.currentTimeMillis();
-
-        countPerSec = iterations*1000L / (end - start);
-        System.out.println(format("      increment: %d/sec", countPerSec));
-
-
-        input = n.getBytes();
-        start = System.currentTimeMillis();
-        for(int i = 0; i < iterations; i++)
-            SodiumLibrary.increment(input);
-        end = System.currentTimeMillis();
-
-        countPerSec = iterations*1000L / (end - start);
-        System.out.println(format("sodium_increment: %d/sec", countPerSec));
-
-/*
-        start = System.currentTimeMillis();
-        for(int i = 0; i < iterations; i++)
-            SodiumLibrary.cryptoGenerichash(input, 16, key);
-        end = System.currentTimeMillis();
-
-        countPerSec = iterations*1000L / (end - start);
-        System.out.println(format("cryptoGenericHash: %d/sec", countPerSec));
-
-
-        start = System.currentTimeMillis();
-        for(int i = 0; i < iterations; i++)
-            SodiumLibrary.increment(input);
-        end = System.currentTimeMillis();
-
-        countPerSec = iterations*1000L / (end - start);
-        System.out.println(format("increment: %d/sec", countPerSec));
-
-
-        start = System.currentTimeMillis();
-        for(int i = 0; i < iterations; i++)
-            SodiumLibrary.cryptoPwhashAlgArgon2id13();
-        end = System.currentTimeMillis();
-
-        countPerSec = iterations*1000L / (end - start);
-        System.out.println(format("cryptoPwhashAlgArgon2id13: %d/sec", countPerSec));
-        */
-    }
-
-
-    public static void timing() {
-        EncryptionService encryptionService = EncryptionService.getInstance();
-
-        SodiumKeyPair key = SodiumLibrary.cryptoBoxKeyPair();
-        byte[] ciphertext = SodiumLibrary.cryptoBoxSeal("test".getBytes(), key.getPublicKey());
-
-        long start = System.currentTimeMillis();
-        for(int i = 0; i < 10000; i++)
-            SodiumLibrary.cryptoBoxSealOpen(ciphertext, key.getPublicKey(), key.getPrivateKey());
-        long end = System.currentTimeMillis();
-
-        long countPerSec = 10000*1000 / (end - start);
-        System.out.println(format("Successful decrypts: %d/sec", countPerSec));
-
-
-        ciphertext[2] = 0;
-        start = System.currentTimeMillis();
-        for(int i = 0; i < 10000; i++) {
-            try {
-                SodiumLibrary.cryptoBoxSealOpen(ciphertext, key.getPublicKey(), key.getPrivateKey());
-                System.out.println("Expected exception");
-            } catch(SodiumLibraryException e) {}
-        }
-        end = System.currentTimeMillis();
-
-        countPerSec = 10000*1000 / (end - start);
-        System.out.println(format("Failed decrypts: %d/sec", countPerSec));
-
-
-        KeyPair key2 = new KeyPair(key);
-        byte[] salt = {32, 89, -42, 120};
-        start = System.currentTimeMillis();
-        for(int i = 0; i < 200000; i++) {
-            encryptionService.getShortPublicKeyHash(salt, key2.getPublicKey());
-        }
-        end = System.currentTimeMillis();
-
-        countPerSec = 200000*1000 / (end - start);
-        System.out.println(format(" Short hashes: %d/sec", countPerSec));
-    }
-
-
-    private static void iniTest() {
-
     }
 }

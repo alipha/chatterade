@@ -56,13 +56,7 @@ public class ClientUserManager {
         if(!passwordKey.isPresent())
             return doAddUser(nick, passwordKey, connection);
 
-        synchronized (lockManager.get(passwordKey.get())) {
-            try {
-                return doAddUser(nick, passwordKey, connection);
-            } finally {
-                lockManager.release(passwordKey.get());
-            }
-        }
+        return lockManager.with(passwordKey.get(), () -> doAddUser(nick, passwordKey, connection));
     }
 
     private ClientUser doAddUser(String nick, Optional<ByteArray> passwordKey, ClientConnection connection) {

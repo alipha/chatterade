@@ -2,6 +2,8 @@ package com.liph.chatterade.common;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 
 public class LockManager {
@@ -10,6 +12,37 @@ public class LockManager {
 
     public LockManager() {
         this.locks = new HashMap<>();
+    }
+
+
+    public <T, R> R with(T lock, Function<T, R> action) {
+        synchronized (get(lock)) {
+            try {
+                return action.apply(lock);
+            } finally {
+                release(lock);
+            }
+        }
+    }
+
+    public <T> T with(Object lock, Supplier<T> action) {
+        synchronized (get(lock)) {
+            try {
+                return action.get();
+            } finally {
+                release(lock);
+            }
+        }
+    }
+
+    public void with(Object lock, Runnable action) {
+        synchronized (get(lock)) {
+            try {
+                action.run();
+            } finally {
+                release(lock);
+            }
+        }
     }
 
     public synchronized Object get(Object lock) {

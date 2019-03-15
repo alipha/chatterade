@@ -194,7 +194,7 @@ public class EncryptionService {
         file.write(encrypted);
         file.close();
 
-        file = new FileOutputStream(filename + ".txt");
+        file = new FileOutputStream(filename + ".txt");     // TODO: REMOVE!!
         file.write(contents);
         file.close();
     }

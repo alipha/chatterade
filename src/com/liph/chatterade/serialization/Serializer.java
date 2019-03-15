@@ -56,16 +56,13 @@ public class Serializer {
         if(!user.getPasswordKey().isPresent())
             return;
 
-        ByteArray passwordKey = user.getPasswordKey().get();
-        try {
-            synchronized (lockManager.get(passwordKey)) {
+        lockManager.with(user.getPasswordKey().get(), () -> {
+            try {
                 doSave(user);
+            } catch(IOException e) {
+                e.printStackTrace();
             }
-        } catch(IOException e) {
-            e.printStackTrace();
-        } finally {
-            lockManager.release(passwordKey);
-        }
+        });
     }
 
     private void doSave(ClientUser user) throws IOException {
@@ -95,10 +92,15 @@ public class Serializer {
         try {
             user = doLoad(passwordKey, createUser);
         } catch(IOException e) {
+            System.out.println("Expected: user settings file not found.");
             e.printStackTrace();
         }
 
-        return user.orElseGet(() -> createUser.apply(EncryptionService.getInstance().generateKeyPair()));
+        return user.orElseGet(() -> {
+            ClientUser u = createUser.apply(EncryptionService.getInstance().generateKeyPair());
+            delayedSave(u);
+            return u;
+        });
     }
 
     private Optional<ClientUser> doLoad(Optional<ByteArray> passwordKey, Function<KeyPair, ClientUser> createUser) throws IOException {
@@ -145,6 +147,6 @@ public class Serializer {
 
     private String getFilename(String filenameHash) {
         String userHomeDir = System.getProperty("user.home");
-        return format("%s/.chatterade/u%s", userHomeDir, filenameHash);
+        return format("%s/.chatterade/u%s.settings", userHomeDir, filenameHash);
     }
 }
